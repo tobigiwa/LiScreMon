@@ -1,15 +1,17 @@
 package frontend
 
 templ header() {
-	<div class="header">
-		<pre id="ascii-art">
+	<div class="h-16 inline-flex w-full bg-zinc-800 justify-between gap-4 text-white">
+		<pre id="ascii-art" class="mr-auto">
 			{ getRandomArt() }
 		</pre>
-		<a href="#">
-			<img src="assets/svg/no_5_settings.svg" alt="" class="icon header-btn"/>
-		</a>
-		<a href="#">
-			<img src="assets/svg/no_6_logout.svg" alt="" class="icon header-btn"/>
-		</a>
+		<div class="flex justify-center items-center gap-8">
+			<button class="focus:bg-teal-500 focus:scale-110 w-10 h-10 max650:hidden">
+				<a><img src="assets/svg/no_5_settings.svg" alt=""/></a>
+			</button>
+			<button class="focus:bg-teal-500 focus:scale-110 w-10 h-10 max650:hidden">
+				<a><img src="assets/svg/no_6_logout.svg" alt=""/></a>
+			</button>
+		</div>
 	</div>
 }

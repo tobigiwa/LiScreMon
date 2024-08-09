@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"errors"
 	"fmt"
+	"time"
 
 	"slices"
 	utils "utils"
@@ -11,11 +12,10 @@ import (
 	badger "github.com/dgraph-io/badger/v4"
 )
 
-func (bs *BadgerDBStore) GetWeek(day utils.Date) (WeeklyStat, error) {
+func (bs *BadgerDBStore) GetWeek(anyDayInTheWeek utils.Date) (WeeklyStat, error) {
 
-	anyDayInTheWeek := utils.Date(day)
-	date, _ := utils.ParseKey(anyDayInTheWeek)
-	if IsFutureWeek(date) {
+	date := utils.ToTimeType(anyDayInTheWeek)
+	if utils.IsFutureWeek(date) {
 		return ZeroValueWeeklyStat, ErrFutureWeek
 	}
 
@@ -47,8 +47,8 @@ func (bs *BadgerDBStore) getWeeklyAppStat(anyDayInTheWeek utils.Date) (WeeklySta
 		tmpStorage = make(map[string]utils.Stats, 20)
 	)
 
-	date, _ := utils.ParseKey(anyDayInTheWeek)
-	allConcernedDays := daysInThatWeek(date)
+	date := utils.ToTimeType(anyDayInTheWeek)
+	allConcernedDays := utils.DaysInThatWeek(date)
 
 	err := bs.db.View(func(txn *badger.Txn) error {
 
@@ -105,16 +105,46 @@ func (bs *BadgerDBStore) getWeeklyAppStat(anyDayInTheWeek utils.Date) (WeeklySta
 	result.WeekTotal = weekTotal
 	result.EachApp = eachAppSlice
 
-	if IsPastWeek(date) {
+	if utils.IsPastWeek(date) {
 		byteData, _ := utils.EncodeJSON(result)
 		saturdayOfThatWeek := allConcernedDays[6]
-		err := bs.setOrUpdateKeyValue(dbWeekKey(saturdayOfThatWeek), byteData)
-		if err != nil {
+		if err := bs.setOrUpdateKeyValue(dbWeekKey(saturdayOfThatWeek), byteData); err != nil {
 			fmt.Println("ERROR WRITING NEW WEEK ENTRY", saturdayOfThatWeek, "ERROR IS:", err)
-		} else {
-			fmt.Println("WRITING NEW WEEK ENTRY", saturdayOfThatWeek)
 		}
+		fmt.Println("WRITING NEW WEEK ENTRY", saturdayOfThatWeek)
+
 	}
 
 	return result, nil
+}
+
+func (bs *BadgerDBStore) ReportWeeklyUsage(lastWeek time.Time) (string, error) {
+
+	upperLastWeekSaturday := utils.PreviousWeekSaturday(lastWeek)
+
+	var (
+		lastWeekStat, upperLastWeekStat WeeklyStat
+		err                             error
+	)
+
+	if lastWeekStat, err = bs.GetWeek(utils.ToDateType(lastWeek)); err != nil {
+		return "", err
+	}
+	if upperLastWeekStat, err = bs.GetWeek(utils.ToDateType(upperLastWeekSaturday)); err != nil {
+		return "", err
+	}
+
+	denominator := float64(len(lastWeekStat.DayByDayTotal))
+	lastWeekDailyAverage := lastWeekStat.WeekTotal.Active / denominator
+	upperLastWeekDailyAverage := upperLastWeekStat.WeekTotal.Active / denominator
+
+	if lastWeekDailyAverage > upperLastWeekDailyAverage {
+		return fmt.Sprintf("Last week daily Avg.: %s  ⬆️%.2f%% from previous week", utils.UsageTimeInHrsMin(lastWeekDailyAverage), ((lastWeekDailyAverage-upperLastWeekDailyAverage)/upperLastWeekDailyAverage)*100), nil
+	}
+
+	if lastWeekDailyAverage < upperLastWeekDailyAverage {
+		return fmt.Sprintf("Last week daily Avg.: %s  ⬇️%.2f%% from previous week", utils.UsageTimeInHrsMin(lastWeekDailyAverage), ((upperLastWeekDailyAverage-lastWeekDailyAverage)/upperLastWeekDailyAverage)*100), nil
+	}
+
+	return fmt.Sprintf("Last week daily Avg.: %s  same with previous week", utils.UsageTimeInHrsMin(lastWeekDailyAverage)), nil
 }

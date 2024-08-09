@@ -1,10 +1,9 @@
-build:
-	@cd ../frontend/ && rm -f *_templ.go && npm run build && templ generate
+dev:
+	@go generate && go run . -dev
 
-compile:
-	@go run .
+run:
+	@go generate && go run .
 
-
-# run: build compile
-run: compile
+install:
+	@go install
 

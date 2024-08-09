@@ -51,7 +51,7 @@ func (x11 *X11Monitor) windowChanged(x11Conn *xgbutil.XUtil, currActiveWindow xp
 
 	if s.AppName != "" { // AS mentioned earlier, if we don't have a name, lost metric
 		if err := x11.Db.WriteUsage(s); err != nil {
-			log.Fatalln("write to db error:", err)
+			log.Fatalln("write to db error:", err) // exit
 		}
 	}
 }

@@ -2,15 +2,16 @@ package monitoring
 
 import (
 	"fmt"
-
+	"log/slog"
 	"time"
 
-	db "LiScreMon/daemon/internal/database"
+	db "smDaemon/daemon/internal/database"
+
+	"utils"
 
 	"github.com/BurntSushi/xgb/xproto"
 	"github.com/BurntSushi/xgbutil"
 	"github.com/BurntSushi/xgbutil/xevent"
-	"utils"
 )
 
 var (
@@ -25,36 +26,34 @@ var (
 	// netClientStackingAtom xproto.Atom
 	x11Conn         *xgbutil.XUtil
 	netActiveWindow = &netActiveWindowInfo{}
-	fixtyEightSecs  = time.Duration(58) * time.Second
+	fixtyEight  = time.Duration(58) * time.Second
 )
 
-func InitMonitoring(db *db.BadgerDBStore) (X11Monitor, error) {
+func InitMonitoring(db *db.BadgerDBStore, logger *slog.Logger) (X11Monitor, error) {
 
-	var (
-		err error
-	)
+	var err error
 
 	count := 0
-
 	// X server connection
 	for {
 		if x11Conn, err = xgbutil.NewConn(); err != nil { // we wait till we connect to X server
 			count++
-			time.Sleep(1 * time.Second)
-
-			if count > 20 {
+			if count > 10 { // 10 retries
 				return X11Monitor{}, fmt.Errorf("error connecting to X server:%w", err)
 			}
-
+			time.Sleep(1 * time.Second)
 			continue
 		}
 		break
 	}
 
+	utils.X11Connection = x11Conn
+
 	monitor = X11Monitor{
 		X11Connection:  x11Conn,
 		Db:             db,
 		windowChangeCh: make(chan utils.GenericKeyValue[xproto.Window, float64], 1),
+		logger:         logger,
 	}
 
 	if err = setRootEventMask(x11Conn); err != nil {

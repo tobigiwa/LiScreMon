@@ -2,245 +2,179 @@ package frontend
 
 import "utils"
 
-templ TasksPage(taskType string, allApps []utils.AppIconCategoryAndCmdLine) {
+templ TasksPage(allApps []utils.AppIconCategoryAndCmdLine) {
 	<!DOCTYPE html>
 	<html lang="en">
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<link rel="stylesheet" href="/assets/styles/index.css"/>
-			<link rel="stylesheet" href="/assets/styles/tasks.css"/>
+			<link rel="stylesheet" href="/assets/styles/output.css"/>
 			<link rel="stylesheet" href="/assets/styles/dd.min.css"/>
-			// <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.13.3/themes/base/jquery-ui.min.css" crossorigin="anonymous" referrerpolicy="no-referrer"/>
-			<link rel="stylesheet" href="/assets/styles/jquery-ui.min.css"/>
-			<script src="/assets/javascript/script.out.js"></script>
+			<script src="assets/javascript/script.out.js"></script>
 			<script src="/assets/libraries/htmx.min.js"></script>
+			<script src="assets/libraries/hyperscript.min.js"></script>
 			<script src="/assets/libraries/dd.min.js"></script>
-			// <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-			<script src="/assets/libraries/jquery-3.7.1.js"></script>
-			// <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.13.3/jquery-ui.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-			<script src="/assets/libraries/jquery-ui.js"></script>
 			<title>ScreenTime</title>
 		</head>
-		<body>
-			<div class="page">
+		<body class="m-0 p-0 h-full font-serif overflow-hidden">
+			<div class="flex w-full">
 				@sideBarMenu()
-				@reminderAndLimitPage(allApps)
-				@templ.JSONScript("id", taskType)
+				@reminderAndLimitPage()
 			</div>
-			<script>
-				document.addEventListener( 'DOMContentLoaded', function () {
-					const data = JSON.parse(document.getElementById('id').textContent);
-					if (data === "AppLimit") {
-						document.querySelector( '.applimitRequest' ).click();
-					} else {
-						document.querySelector( '.reminderRequest' ).click();
-					}
-				});
-		</script>
 		</body>
+		@reminderAndLimitDialog(allApps)
 	</html>
 }
 
-templ reminderAndLimitPage(allApps []utils.AppIconCategoryAndCmdLine) {
-	<div class="main">
+templ reminderAndLimitPage() {
+	<div class="w-full bg-zinc-800">
 		@header()
 		@reminderAndLimitHeaderSection()
-		<div class="reminder-limit__page">
-			@RenderTasks(true, templ.NopComponent)
+		<div class="max-h-max min-h-task-page bg-slate-800">
+			@RenderTasks(templ.NopComponent)
 		</div>
-		@reminderAndLimitDialog(allApps)
 	</div>
 }
 
-templ RenderTasks(isEmpty bool, taskType templ.Component) {
-	if isEmpty {
-		<div id="task-holder" hx-swap-oob="true" style="min-height: calc(100vh - 8rem); display: flex; justify-content: center; align-items: center; color:white">No Task</div>
-	} else {
-		<div id="task-holder" hx-swap-oob="true">
-			<ul>
-				@taskType
-			</ul>
-		</div>
-	}
+templ RenderTasks(taskType templ.Component) {
+	<div id="taskHolder">
+		@taskType
+	</div>
 }
 
 templ reminderAndLimitDialog(allApps []utils.AppIconCategoryAndCmdLine) {
 	@reminderDialog()
 	@limitDialog(allApps)
-	<script>
-		var appLimitdialog, form;
-		appLimitdialog = $( "#appLimit-dialog" ).dialog({
-				autoOpen: false,
-				height: 400,
-				width: 550,
-				modal: true,
-				buttons: {
-					"Create AppLimit": function() {
-						// $("#appLimit-form")[0];
-						// htmx.trigger(form, 'submit');
-						appLimitdialog.dialog( "close" );
-						console.log(createLimitButton)
-						var createLimitButton = $("#appLimit-form .submit")[0];
-						createLimitButton.click()
-					},
-					Cancel: function() {
-						appLimitdialog.dialog( "close" );
-					}
-				},
-				close: function() {
-					form[0].reset();
-				}
-			});
-
-			form = appLimitdialog.find( "form" );
-			
-			$("#limit-dialog__btn").button().click(function() {
-				appLimitdialog.dialog("open");
-			});
-	</script>
 }
 
 templ reminderAndLimitHeaderSection() {
-	<div class="sticky-header">
-		<div class="reminder-request">
-			<h2 class="reminderRequest" hx-get="/reminders" hx-swap="none" hx-select-oob="#task-holder:outerHTML">Reminder</h2>
-			<button
-				class="reminder-dialog__btn"
-				title="add new reminder task"
-			>
-				<img
-					src="assets/svg/add.svg"
-				/>
+	<div class="h-12 sticky top-0 z-10 bg-zinc-500 text-white mb-1 rounded-md flex gap-8">
+		<div class="inline-flex justify-start items-center w-1/2 cursor-pointer">
+			<h2 hx-get="/reminders" hx-swap="none" hx-select-oob="#taskHolder:outerHTML " _="on load trigger click on me" class="m-0 p-0 w-full text-center hover:scale-90 font-bold text-lg">Reminder</h2>
+			<button title="add new reminder task" _="on click call showReminderDialog() then get the first .reminder-form then call it.reset()" class=" w-11 h-11 rounded-md cursor-alias bg-white rounded-r">
+				<img src="assets/svg/add2.svg" class="h-8 w-10"/>
 			</button>
 		</div>
-		<div class="limit-request">
-			<h2 class="applimitRequest" hx-get="/appLimits" hx-swap="none" hx-select-oob="#task-holder:outerHTML">App Limit</h2>
-			<button
-				id="limit-dialog__btn"
-				title="add new app limit"
-			>
-				<img
-					src="assets/svg/add.svg"
-				/>
+		<div class="inline-flex justify-start items-center w-1/2 cursor-pointer">
+			<h2 hx-get="/limits" hx-swap="none" hx-select-oob="#taskHolder:outerHTML" class="m-0 p-0 w-full text-center hover:scale-90 font-bold text-lg">App Limit</h2>
+			<button title="add new app limit" _="on click js document.querySelector('.limit-dialog').showModal() end then get the first .limit-form then call it.reset()" class="w-11 h-11 rounded-md cursor-alias bg-white items-center">
+				<img class="h-8 w-10" src="assets/svg/add2.svg"/>
 			</button>
 		</div>
+		<script type="text/javascript">
+			function getLocalDateTime() {
+				const now = new Date();
+				const timeZoneOffset = now.getTimezoneOffset() * 60000;
+				const localDateTime = new Date(now.getTime() - timeZoneOffset);
+				return localDateTime.toISOString().slice(0, 16);
+			}
+
+			function showReminderDialog() {
+				const dateTimeInput = document.querySelector('input[type="datetime-local"]');
+				dateTimeInput.value = getLocalDateTime();
+				dateTimeInput.min = getLocalDateTime();
+
+				document.querySelector('.reminder-dialog').showModal();
+			}
+		</script>
 	</div>
 }
 
-templ reminderDialog() {
-	<dialog class="reminder-dialog">
-		<form class="new-reminder" method="post" action="/newReminder">
-			<div class="titles">
-				<div class="form-pair">
-					<label for="add-title">Title:</label>
-					<input
-						type="text"
-						name="title"
-						minlength="4"
-						maxlength="35"
-						placeholder="minimun of 4 words"
-						required
-					/>
+templ limitDialog(allApp []utils.AppIconCategoryAndCmdLine) {
+	<dialog class="limit-dialog h-30vh bg-slate-400 items-center p-4 w-30vh rounded-md backdrop:backdrop-blur-sm">
+		<form hx-post="/newLimit" hx-trigger="submit" hx-swap="none" hx-select-oob="#taskHolder:outerHTML" _="on submit js document.querySelector('.limit-dialog').close() end" class="limit-form">
+			<select required name="app" is="ms-dropdown" data-enable-auto-filter="false">
+				<option value="" data-description="select app to limit">Apps</option>
+				for _, app := range allApp {
+					<option value={ app.AppName } data-image={ getImageFilePath(app.AppName, app.Icon) } data-description={ app.Category.String() }>{ app.AppName }</option>
+				}
+			</select>
+			<div class="mb-4 flex justify-between">
+				<input focus type="number" name="hrs" min="0" max="23" placeholder="in Hrs; 0 - 23" class="mt-4 w-32 h-8"/>
+				<input type="number" name="min" min="0" max="59" placeholder="in Mins; 0 - 59" class="mt-4 w-32 h-8"/>
+			</div>
+			<div class="mb-4 flex justify-between">
+				<div>
+					<input checked type="checkbox" name="recurring" value="true"/>
+					<label for="sound-notification-first">Everyday</label>
 				</div>
-				<div class="form-pair">
-					<label for="add-subtitle">Subtitle:</label>
-					<input
-						type="text"
-						name="subtitle"
-						maxlength="50"
-						placeholder="optional"
-					/>
+				<div>
+					<input type="checkbox" name="exitApp" value="true"/>
+					<label for="sound-notification-first" class="italic">Exit app</label>
 				</div>
 			</div>
-			<div class="reminder-time">
-				<div class="combine">
-					<div class="form-pair">
-						<label for="set-reminder">Set your reminder:</label>
-						<input
-							type="datetime-local"
-							name="reminder"
-							max={ FormatTimeTOHMTLDatetimeLocal(nextTwoWeeks()) }
-						/>
+			<div class="button-container flex justify-between">
+				<button type="submit" class="p-2.5 text-lg bg-teal-800 text-white border-none rounded-md cursor-pointer">Create Limit</button>
+				<button formnovalidate _="on click get the first .limit-dialog then call it.close() then halt the event" class="p-2.5 text-lg bg-teal-800 text-white border-none rounded-md cursor-pointer">Close</button>
+			</div>
+		</form>
+	</dialog>
+}
+
+templ reminderDialog() {
+	<dialog class="reminder-dialog w-3/4 bg-zinc-400 text-black rounded-md backdrop:backdrop-blur-sm">
+		<form hx-post="/newReminder" hx-trigger="submit" hx-swap="none" hx-select-oob="#taskHolder:outerHTML" _="on submit js document.querySelector('.reminder-dialog').close() end" class="reminder-form px-3">
+			<div class="titles w-full inline-flex justify-between">
+				<div class="form-pair flex flex-col">
+					<label for="add-title" class="mb-1.5 italic text-lg">Title:</label>
+					<input required type="text" name="title" minlength="4" maxlength="35" placeholder="minimun of 4 words" class="p-1.5 text-sm mb-2.5"/>
+				</div>
+				<div class="form-pair flex flex-col">
+					<label for="add-subtitle" class="mb-1.5 italic text-lg">Subtitle:</label>
+					<input type="text" name="subtitle" placeholder="optional" maxlength="50" class="p-1.5 text-sm mb-2.5"/>
+				</div>
+			</div>
+			<div class="reminder-time w-full inline-flex justify-between flex-wrap">
+				<div class="combine flex justify-between items-center">
+					<div class="form-pair flex flex-col">
+						<label for="set-reminder" class="mb-1.5 italic text-lg">Set your reminder:</label>
+						<input type="datetime-local" name="reminder" max={ FormatTimeTOHMTLDatetimeLocal(nextTwoWeeks()) } class="p-1.5 text-sm mb-2.5"/>
 					</div>
-					<div class="alert">
-						<input
-							type="checkbox"
-							name="soundNotification"
-							value="true"
-							checked
-						/>
-						<label for="sound-notification-reminder">
-							<img
-								src="assets/svg/bell.svg"
-								alt="Notification Icon"
-							/>
+					<div>
+						<input checked type="checkbox" name="soundNotification" value="true"/>
+						<label for="sound-notification-reminder" class="mb-1.5 italic text-lg">
+							<img src="assets/svg/bell.svg" alt="Notification Icon" class="w-4"/>
 						</label>
 					</div>
 				</div>
-				<div class="combine">
-					<div class="form-pair ">
-						<label for="add-notification__first">
-							First
-							notification
-							(Mins):
-						</label>
+				<div class="combine flex justify-between items-center">
+					<div class="form-pair flex flex-col">
+						<label for="add-notification__first" class="mb-1.5 italic text-lg">First notification (Mins):</label>
 						<input
 							type="number"
 							name="firstNotification"
 							min="0"
 							max="10"
 							value="10"
+							class="p-1.5 text-sm mb-2.5"
 						/>
 					</div>
-					<div class="alert">
-						<input
-							type="checkbox"
-							name="soundFirstNotification"
-							value="true"
-							checked
-						/>
-						<label for="sound-notification-first">
+					<div>
+						<input type="checkbox" name="soundFirstNotification" value="true" checked/>
+						<label for="sound-notification-first" class="mb-1.5 italic text-lg">
 							<img
 								src="assets/svg/bell.svg"
 								alt="Notification Icon"
+								class="w-4"
 							/>
 						</label>
 					</div>
 				</div>
-				<div class="combine">
-					<div class="form-pair">
-						<label for="add-notification__second">
-							Second
-							notification
-							(Mins):
-						</label>
-						<input
-							type="number"
-							name="secondNotification"
-							min="0"
-							max="10"
-							value="5"
-						/>
+				<div class="combine flex justify-between items-center">
+					<div class="form-pair flex flex-col">
+						<label for="add-notification__second" class="mb-1.5 italic text-lg">Second notification (Mins)</label>
+						<input type="number" name="secondNotification" min="0" max="10" value="5" class="p-1.5 text-sm mb-2.5"/>
 					</div>
-					<div class="alert">
-						<input
-							type="checkbox"
-							name="soundSecondNotification"
-							value="true"
-							checked
-						/>
-						<label for="sound-notification-second">
-							<img
-								src="assets/svg/bell.svg"
-								alt="Notification Icon"
-							/>
+					<div>
+						<input checked type="checkbox" name="soundSecondNotification" value="true"/>
+						<label for="sound-notification-second" class="mb-1.5 italic text-lg">
+							<img src="assets/svg/bell.svg" alt="Notification Icon" class="w-4"/>
 						</label>
 					</div>
 				</div>
 				<div class="out">
-					<div class="form-pair">
-						<label for="site-search">
+					<div class="form-pair flx flex-col">
+						<label for="site-search" class="mb-1.5 italic text-lg">
 							App to be
 							launched:
 						</label>
@@ -249,6 +183,7 @@ templ reminderDialog() {
 							name="app"
 							list="app-list"
 							value="no-app"
+							class="p-1.5 text-sm mb-2.5"
 						/>
 						<datalist id="app-list">
 							<option value="Pizza"></option>
@@ -260,113 +195,20 @@ templ reminderDialog() {
 					</div>
 				</div>
 			</div>
-			<div class="form-pair">
-				<label for="add-note">Include Note:</label>
+			<div class="form-pair flex flex-col">
+				<label for="add-note" class="mb-1.5 italic text-lg">Include Note:</label>
 				<textarea
 					name="note"
 					rows="3"
 					cols="1"
 					placeholder="optional"
+					class="p-1.5 text-sm mb-2.5"
 				></textarea>
 			</div>
-			<div class="button-container">
-				<button type="submit">Create Reminder</button>
-				<button class="close-modal" formmethod="dialog" formnovalidate>Close</button>
+			<div class="button-container flex justify-between py-4">
+				<button type="submit" class="p-2.5 text-lg bg-teal-800 text-white border-none rounded-md cursor-pointer" type="submit">Create Reminder</button>
+				<button formnovalidate _="on click get the first .reminder-dialog then call it.close() then halt the event" class="p-2.5 text-lg bg-teal-800 text-white border-none rounded-md cursor-pointer">Close</button>
 			</div>
 		</form>
-		<script>
-			function getLocalDateTime() {
-				const now = new Date();
-				const timeZoneOffset = now.getTimezoneOffset() * 60000;
-				const localDateTime = new Date(now.getTime() - timeZoneOffset);
-				return localDateTime.toISOString().slice(0, 16);
-			}
-
-			const reminderDialog = document.querySelector('.reminder-dialog');
-			
-			document.querySelector('.reminder-dialog__btn').addEventListener('click', () => {
-				const dateTimeInput = document.querySelector('input[type="datetime-local"]');
-				dateTimeInput.value = getLocalDateTime();
-				dateTimeInput.min = getLocalDateTime();
-				reminderDialog.showModal();
-			});
-		</script>
 	</dialog>
-}
-
-templ limitDialog(allApp []utils.AppIconCategoryAndCmdLine) {
-	// <dialog class="limit-dialog">
-	<div id="appLimit-dialog">
-		<form id="appLimit-form" hx-post="/newAppLimit" hx-swap="none" hx-select-oob="#task-holder:outerHTML">
-			<select
-				name="app"
-				is="ms-dropdown"
-				data-enable-auto-filter="false"
-				required
-			>
-				<option
-					value=""
-					data-description="select app to limit"
-				>Apps</option>
-				for _, app := range allApp {
-					<option value={ app.AppName } data-image={ getImageFilePath(app.AppName, app.Icon) } data-description={ app.Category.String() }>{ app.AppName }</option>
-				}
-			</select>
-			<div class="inline">
-				<input
-					type="number"
-					name="hrs"
-					min="0"
-					max="23"
-					placeholder="limit in Hrs; 0 - 23"
-				/>
-				<input
-					type="number"
-					name="min"
-					min="0"
-					max="59"
-					placeholder="limit in Minutes; 0 - 59"
-				/>
-			</div>
-			<div class="inline">
-				<div>
-					<input
-						type="checkbox"
-						name="recurring"
-						value="true"
-						checked
-					/>
-					<label
-						for="sound-notification-first"
-					>Everyday</label>
-				</div>
-				<div>
-					<input
-						type="checkbox"
-						name="exitApp"
-						value="true"
-					/>
-					<label for="sound-notification-first">
-						Exit
-						app
-					</label>
-				</div>
-			</div>
-			<div class="button-container">
-				<button class="submit" type="submit">Create Limit</button>
-				<button
-					class="close-modal"
-					formmethod="dialog"
-					formnovalidate
-				>Close</button>
-			</div>
-		</form>
-		// <script type="text/javascript">
-		// 		const limitDialog = document.querySelector('.limit-dialog');
-		// 		document.querySelector('.limit-dialog__btn').addEventListener('click', () => {
-		// 			limitDialog.showModal();
-		// 		});
-		// </script>
-	</div>
-	// </dialog>
 }

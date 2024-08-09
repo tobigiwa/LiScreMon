@@ -9,20 +9,21 @@ import (
 )
 
 type Message struct {
-	Endpoint                 string              `json:"endpoint"`
-	StatusCheck              string              `json:"statusCheck"`
-	IsError                  bool                `json:"isError"`
-	Error                    string              `json:"error"`
-	SetCategoryRequest       SetCategoryRequest  `json:"setCategoryRequest"`
-	SetCategoryResponse      SetCategoryResponse `json:"setCategoryResponse"`
-	DayStatRequest           Date                `json:"dayStatRequest"`
-	DayStatResponse          DayStatMessage      `json:"dayStatResponse"`
-	WeekStatRequest          Date                `json:"weekStatRequest"`
-	WeekStatResponse         WeekStatMessage     `json:"weekStatResponse"`
-	AppStatRequest           AppStatRequest      `json:"appStatResquest"`
-	AppStatResponse          AppStatMessage      `json:"appStatResponse"`
-	ReminderAndLimitRequest  Task                `json:"reminderAndLimitRequest"`
-	ReminderAndLimitResponse ReminderMessage     `json:"reminderAndLimitResponse"`
+	Endpoint            string              `json:"endpoint"`
+	StatusCheck         string              `json:"statusCheck"`
+	IsError             bool                `json:"isError"`
+	Error               string              `json:"error"`
+	DayStatRequest      Date                `json:"dayStatRequest"`
+	DayStatResponse     DayStatMessage      `json:"dayStatResponse"`
+	WeekStatRequest     Date                `json:"weekStatRequest"`
+	WeekStatResponse    WeekStatMessage     `json:"weekStatResponse"`
+	AppStatRequest      AppStatRequest      `json:"appStatResquest"`
+	AppStatResponse     AppStatMessage      `json:"appStatResponse"`
+	TaskRequest         Task                `json:"taskRequest"`
+	TaskResponse        TaskMessage         `json:"taskResponse"`
+	SetCategoryRequest  SetCategoryRequest  `json:"setCategoryRequest"`
+	SetCategoryResponse SetCategoryResponse `json:"setCategoryResponse"`
+	GetCategoryResponse []Category          `json:"getCategoryResponse"`
 }
 
 type SetCategoryRequest struct {
@@ -34,7 +35,7 @@ type SetCategoryResponse struct {
 	IsCategorySet bool `json:"isCategorySet"`
 }
 
-type ReminderMessage struct {
+type TaskMessage struct {
 	Task              Task                        `json:"task"`
 	TaskOptSuccessful bool                        `json:"taskOptsuccessful"`
 	AllTask           []Task                      `json:"allTask"`
@@ -49,7 +50,6 @@ type WeekStatMessage struct {
 	Month           string              `json:"month"`
 	Year            string              `json:"year"`
 	AppDetail       []ApplicationDetail `json:"appDetail"`
-	AllCategory     []Category          `json:"allCategory"`
 }
 
 type DayStatMessage struct {
@@ -179,7 +179,7 @@ type AppLimit struct {
 	Limit          float64 `json:"limit"`
 	OneTime        bool    `json:"oneTime"`
 	ExitApp        bool    `json:"exitApp"`
-	Today          Date    `json:"today"`
+	Day            Date    `json:"today"`
 	IsLimitReached bool    `json:"isLimitReached"`
 }
 

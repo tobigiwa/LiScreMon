@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Exec=/home/tobigiwa/go/bin/LiScreMon restart
+Exec=/home/tobigiwa/go/bin/trayIcon
 Hidden=false
 NoDisplay=false
 X-GNOME-Autostart-enabled=true

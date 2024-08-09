@@ -4,9 +4,9 @@ Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 package cli
 
 import (
-	"LiScreMon/daemon"
 	"log"
 	"log/slog"
+	"smDaemon/daemon"
 	utils "utils"
 
 	"github.com/spf13/cobra"
@@ -37,7 +37,14 @@ var startCmd = &cobra.Command{
 		// 	panic(err)
 		// }
 		// defer pprof.StopCPUProfile()
-		logger, logFile, err := utils.Logger("daemon.log")
+
+		// Logging
+		mode, err := cmd.Flags().GetBool("mode")
+		if err != nil {
+			log.Fatalln("err getting build mode in flag command:", err) // exit
+		}
+
+		logger, logFile, err := utils.Logger("daemon.log", mode)
 		if err != nil {
 			log.Fatalln(err) // exit
 		}
@@ -45,7 +52,9 @@ var startCmd = &cobra.Command{
 
 		slog.SetDefault(logger)
 
-		daemon.DaemonServiceLinux(logger)
+		if err := daemon.DaemonServiceLinux(logger); err != nil {
+			logger.Error(err.Error())
+		}
 	},
 }
 

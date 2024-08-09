@@ -1,9 +1,11 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"go/build"
 	"log"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,15 +20,30 @@ import (
 var (
 	broswerCmd *exec.Cmd
 	desktopCmd *exec.Cmd
+	logger     *slog.Logger
 )
 
 func main() {
-	onExit := func() { systray.Quit() }
+	var (
+		logFile *os.File
+		err     error
+	)
 
+	mode := flag.Bool("dev", false, "specify if to build in production or development mode")
+	flag.Parse()
+
+	if logger, logFile, err = utils.Logger("trayIcon.log", *mode); err != nil {
+		log.Fatalln(err)
+	}
+	defer logFile.Close()
+
+	onExit := func() { broswerCmd, desktopCmd, logger = nil, nil, nil }
 	systray.Run(onReady, onExit)
 }
 
 func onReady() {
+
+	logger.Info("TrayIcon is alive!!!")
 
 	systray.SetTemplateIcon(icon, icon)
 	systray.SetTitle(title)
@@ -46,23 +63,45 @@ func onReady() {
 		launchDesktop := systray.AddMenuItem("Launch desktop view", "Launch desktop view")
 
 		systray.AddSeparator()
+		logFolder := systray.AddMenuItem("Open log folder", "Open log folder")
 		about := systray.AddMenuItem("More Information", "More Information")
-		kill := about.AddSubMenuItem(fmt.Sprintf("Kill %s daemon service", title), fmt.Sprintf("Kill %s daemon service", title))
-		remove := about.AddSubMenuItem("Remove this Icon", "Remove this Icon")
+		killDaemon := about.AddSubMenuItem("Quit daemon service", fmt.Sprintf("Quit %s daemon service", title))
+		remove := about.AddSubMenuItem("Remove this tray-icon", "Remove this Icon")
+
+		binaries := [3]string{"smDaemon", "smDesktop", "smBrowser"}
+		for _, binary := range binaries {
+			path := filepath.Join(getGOPATH(), "bin", binary)
+			if _, err := os.Stat(path); err != nil {
+
+				switch binary {
+				case binaries[0]:
+					utils.NotifyWithoutBeep(fmt.Sprintf("%s binary not found in GOPATH", title),
+						fmt.Sprintf("%s binary not found in GOPATH, program cannot be initiated. Please see installation at %s", title, "https.github.com/tobigiwa/LiScreMon"))
+					logger.Error(fmt.Sprintf("%s binary not found in GOPATH", title))
+					systray.Quit()
+
+				case binaries[1]:
+					launchDesktop.Hide()
+				case binaries[2]:
+					launchBrowser.Hide()
+				}
+			}
+		}
 
 		for {
 			select {
 			case <-launchBrowserSubOne.ClickedCh:
 				if strings.Contains(launchBrowser.String(), "running 🟢") {
 					if err := jumpToBrowserView(); err != nil { // opens **another** browser tab of the `browser server's` port Addr
-						utils.NotifyWithBeep("Operation failed", "Could not launch LiScreMon browser view.")
+						utils.NotifyWithBeep("Operation failed", fmt.Sprintf("Could not launch %s browser view.", title))
+						logger.Error(err.Error())
 					}
 					continue
 				}
 
 				if err := launchBrowserView(); err != nil { // starts the browser server
-					fmt.Println(err)
-					utils.NotifyWithBeep("Operation failed", "Could not launch LiScreMon browser view.")
+					utils.NotifyWithBeep("Operation failed", fmt.Sprintf("Could not launch %s browser view.", title))
+					logger.Error(err.Error())
 					continue
 				}
 
@@ -77,7 +116,8 @@ func onReady() {
 
 			case <-launchDesktop.ClickedCh:
 				if err := launcDesktopView(); err != nil { // desktop app is launched
-					utils.NotifyWithBeep("Operation failed", "Could not launch LiScreMon desktop view.")
+					utils.NotifyWithBeep("Operation failed", fmt.Sprintf("Could not launch %s desktop view.", title))
+					logger.Error(err.Error())
 					continue
 				}
 
@@ -86,28 +126,33 @@ func onReady() {
 
 				go func() {
 					if err := desktopCmd.Wait(); err != nil { // waits for desktop app to be closed
-						log.Println("error releasing cmd resource:err ", err)
-
+						logger.Error(err.Error())
 					}
 					launchDesktop.Enable()
 					launchDesktop.SetTitle("Launch desktop view")
 				}()
 
-			case <-kill.ClickedCh:
+			case <-logFolder.ClickedCh:
+				if err := openLogFolder(); err != nil {
+					utils.NotifyWithBeep("Operation failed", fmt.Sprintf("could not open log folder. Log folder is present at %s", utils.APP_LOGS_DIR))
+					logger.Error(err.Error())
+				}
+
+			case <-killDaemon.ClickedCh:
 				if err := killDaemonService(); err != nil { // starts the browser server
-					fmt.Println(err)
 					utils.NotifyWithBeep("Operation failed", "Could not kill daemon service.")
+					logger.Error(err.Error())
 					continue
 				}
 
-				utils.NotifyWithBeep("Operation failed", "Could not kill daemon service.")
+				utils.NotifyWithBeep("Daemon sevice ended", "would need to restart user session to awake daemon.")
 
 			case <-remove.ClickedCh:
 				utils.NotifyWithBeep(
 					"Uhmmm...Really? Buh why??? 😢",
 					"You would have to restart your user session to have the 'Me' back. \nYou can still access the browser view (via the terminal) and the desktop app (via the desktop entry).\nI was just always a convenient option. Bye!!!👋")
+				systray.Quit()
 			}
-			systray.Quit()
 
 		}
 	}()
@@ -118,7 +163,7 @@ func launchBrowserView() error {
 	gopath := getGOPATH()
 
 	if runtime.GOOS == "linux" {
-		gopathBin := filepath.Join(gopath, "bin", "browser")
+		gopathBin := filepath.Join(gopath, "bin", "smBrowser")
 		broswerCmd = exec.Command(gopathBin)
 	}
 
@@ -133,7 +178,7 @@ func launcDesktopView() error {
 	gopath := getGOPATH()
 
 	if runtime.GOOS == "linux" {
-		gopathBin := filepath.Join(gopath, "bin", "desktop")
+		gopathBin := filepath.Join(gopath, "bin", "smDesktop")
 		desktopCmd = exec.Command(gopathBin)
 	}
 
@@ -199,8 +244,28 @@ func killDaemonService() error {
 	var cmd *exec.Cmd
 
 	if runtime.GOOS == "linux" {
-		gopathBin := filepath.Join(gopath, "bin", "LiScreMon", "stop")
-		cmd = exec.Command(gopathBin)
+		gopathBin := filepath.Join(gopath, "bin", "smDaemon")
+		cmd = exec.Command(gopathBin, "stop")
+	}
+
+	if runtime.GOOS == "windows" {
+		notImplemented()
+	}
+
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	return cmd.Wait()
+}
+
+func openLogFolder() error {
+	logFolder := utils.APP_LOGS_DIR
+
+	var cmd *exec.Cmd
+
+	if runtime.GOOS == "linux" {
+		cmd = exec.Command("xdg-open", logFolder)
 	}
 
 	if runtime.GOOS == "windows" {

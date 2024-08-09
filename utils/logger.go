@@ -1,13 +1,13 @@
 package utils
 
 import (
-	"io"
+	"log"
 	"log/slog"
 	"os"
 	"path/filepath"
 )
 
-func Logger(logFileName string) (*slog.Logger, *os.File, error) {
+func Logger(logFileName string, mode bool) (*slog.Logger, *os.File, error) {
 
 	configDir := APP_CONFIG_DIR
 
@@ -16,10 +16,17 @@ func Logger(logFileName string) (*slog.Logger, *os.File, error) {
 		return nil, nil, err
 	}
 
-	opts := slog.HandlerOptions{
+	opts := &slog.HandlerOptions{
 		AddSource: true,
 	}
 
-	jsonLogger := slog.NewTextHandler(io.MultiWriter(logFile, os.Stdout), &opts)
+	if mode {
+		log.Default()
+		jsonLogger := slog.NewTextHandler(os.Stdout, opts)
+		return slog.New(jsonLogger), logFile, nil
+	}
+
+	os.Stdout = nil
+	jsonLogger := slog.NewJSONHandler(logFile, opts)
 	return slog.New(jsonLogger), logFile, nil
 }

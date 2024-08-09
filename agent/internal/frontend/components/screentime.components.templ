@@ -1,23 +1,33 @@
 package frontend
 
-import "html/template"
-import "utils"
+import (
+	"html/template"
+	"utils"
+)
 
-templ WeekStatTempl(chart template.HTML, totalWeekUsage float64, appDetails []utils.ApplicationDetail, allCategory []utils.Category, anyDay string) {
-	@chartWrapper(chart, utils.NoAppIconCategoryAndCmdLine)
+templ WeekStatTempl(chart template.HTML, totalWeekUsage float64, appDetails []utils.ApplicationDetail, anyDay string) {
+	@chartWrapper(chart, utils.NoAppIconCategoryAndCmdLine, false)
 	if len(appDetails) == 0 {
-		<div class="chart-highlight" id="highlight" hx-swap-obb="true" style="min-height: calc(100vh - 37rem); display: flex; justify-content: center; align-items: center;">
-			<div style="color: white;">There seems to be no usage this week 😢</div>
+		<div id="highlight" hx-swap-obb="true" class="min-h-chart-highlight flex justify-center items-center">
+			<div class="text-white">There seems to be no usage this week 😢</div>
 		</div>
 	} else {
-		@chartHighlight(appDetails, totalWeekUsage, allCategory, anyDay)
+		@chartHighlight(appDetails, totalWeekUsage, anyDay)
 	}
 }
 
 templ AppStatTempl(chart template.HTML, info utils.AppIconCategoryAndCmdLine) {
-	@chartWrapper(chart, info)
+	@chartWrapper(chart, info, false)
 }
 
 templ DayStatTempl(chart template.HTML, data []utils.AppStat) {
-	@chartWrapper(chart, utils.NoAppIconCategoryAndCmdLine)
+	@chartWrapper(chart, utils.NoAppIconCategoryAndCmdLine, true)
+}
+
+templ SetCategory(category, appName string) {
+	<button disabled id={ appName } hx-swap-obb="true" class="min-w-full rounded-sm bg-zinc-800 text-white text-left">{ category }</button>
+}
+
+templ ChartOnly(chart template.HTML) {
+	@chartWrapper(chart, utils.NoAppIconCategoryAndCmdLine, false)
 }

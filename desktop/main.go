@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"embed"
+	"flag"
 	"log"
 	"log/slog"
 
@@ -20,9 +21,11 @@ import (
 var assetDir embed.FS
 
 func main() {
+	mode := flag.Bool("dev", false, "specify if to build in production or development mode")
+	flag.Parse()
 
-	// logging
-	logger, logFile, err := utils.Logger("desktop.log")
+	// Logging
+	logger, logFile, err := utils.Logger("desktop.log", *mode)
 	if err != nil {
 		log.Fatalln(err) // exit
 	}
@@ -40,7 +43,7 @@ func main() {
 
 	// Create application with options
 	if err = wails.Run(&options.App{
-		Title:  "LiScreMon",
+		Title:  "smDaemon",
 		Width:  1024,
 		Height: 768,
 		AssetServer: &assetserver.Options{
@@ -49,16 +52,13 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup:        app.startup,
-		// OnShutdown:       app.shutdown,
+		OnShutdown:       app.shutdown,
 		Bind: []interface{}{
 			app,
 		},
 	}); err != nil {
-		println("Error:", err.Error())
+		logger.Error(err.Error())
 	}
-
-	log.Println("we got a close")
-	desktopAgent.CloseDaemonConnection()
 }
 
 type AppInterface interface {
@@ -73,8 +73,8 @@ type App struct {
 }
 
 // NewApp creates a new App application struct
-func NewApp(d AppInterface) *App {
-	return &App{desktopAgent: d}
+func NewApp(desktopApp AppInterface) *App {
+	return &App{desktopAgent: desktopApp}
 }
 
 // startup is called when the app starts. The context is saved
@@ -82,11 +82,10 @@ func NewApp(d AppInterface) *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	if _, err := a.desktopAgent.CheckDaemonService(); err != nil {
-		log.Fatalln("error connecting to daemon service:", err)
+		log.Fatalln("error connecting to daemon service:", err) // exit
 	}
 }
 
 func (a *App) shutdown(ctx context.Context) {
-	log.Println("we got a close")
 	a.desktopAgent.CloseDaemonConnection()
 }

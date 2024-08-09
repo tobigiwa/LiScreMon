@@ -2,7 +2,6 @@ package database
 
 import (
 	"errors"
-	"fmt"
 
 	utils "utils"
 
@@ -44,7 +43,6 @@ func (bs *BadgerDBStore) GetTaskByAppName(appName string) ([]utils.Task, error) 
 
 	taskArry, err := bs.getAllTasks()
 	if err != nil {
-		fmt.Println("error came from here:", err)
 		return nil, err
 	}
 
@@ -65,7 +63,6 @@ func (bs *BadgerDBStore) GetTaskByUUID(taskID uuid.UUID) (utils.Task, error) {
 
 	taskArry, err := bs.getAllTasks()
 	if err != nil {
-		fmt.Println("error came from here:", err)
 		return utils.Task{}, err
 	}
 
@@ -85,7 +82,6 @@ func (bs *BadgerDBStore) AddTask(task utils.Task) error {
 	}
 
 	if bs.checkIfLimitAppExist(task, taskArry) {
-		fmt.Println("this happened")
 		return utils.ErrLimitAppExist
 	}
 
@@ -123,28 +119,5 @@ func (bs *BadgerDBStore) RemoveTask(id uuid.UUID) error {
 	if err != nil {
 		return err
 	}
-	return bs.setOrUpdateKeyValue(dbTaskKey, byteData)
-}
-
-func (bs *BadgerDBStore) UpdateAppLimitStatus(taskID uuid.UUID) error {
-	taskArry, err := bs.getAllTasks()
-	if err != nil {
-		return err
-	}
-
-	for i := 0; i < len(taskArry); i++ {
-		if task := taskArry[i]; task.UUID == taskID {
-			task.AppLimit.Today = utils.Today()
-			task.AppLimit.IsLimitReached = true
-			taskArry[i] = task
-			break
-		}
-	}
-
-	byteData, err := utils.EncodeJSON(taskArry)
-	if err != nil {
-		return err
-	}
-
 	return bs.setOrUpdateKeyValue(dbTaskKey, byteData)
 }

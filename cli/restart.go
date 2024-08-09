@@ -4,10 +4,9 @@ Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 package cli
 
 import (
-	"LiScreMon/daemon"
-	"fmt"
 	"log"
 	"log/slog"
+	"smDaemon/daemon"
 	"time"
 	utils "utils"
 
@@ -36,15 +35,21 @@ to quickly create a Cobra application.`,
 		// }
 		// defer pprof.StopCPUProfile()
 
-		if err := stopLiscrenMon(); err != nil {
-			fmt.Println("could not sucessfully shutdown running LiScreMon", err)
+		if err := stopScreenMonitor(); err != nil {
+			log.Println("could not sucessfully shutdown running LiScreMon", err)
 			return
 		}
-		fmt.Println("LiScreMon would be restarting now...")
+
+		log.Println("smDaemon would be restarting now...")
 		time.Sleep(2 * time.Second) // allow for all resources to be released
 
-		// logging
-		logger, logFile, err := utils.Logger("daemon.log")
+		// Logging
+		mode, err := cmd.Flags().GetBool("mode")
+		if err != nil {
+			log.Fatalln("err getting build mode in flag command:", err) // exit
+		}
+
+		logger, logFile, err := utils.Logger("daemon.log", mode)
 		if err != nil {
 			log.Fatalln(err) // exit
 		}
@@ -52,7 +57,9 @@ to quickly create a Cobra application.`,
 
 		slog.SetDefault(logger)
 
-		daemon.DaemonServiceLinux(logger)
+		if err := daemon.DaemonServiceLinux(logger); err != nil {
+			logger.Error(err.Error())
+		}
 	},
 }
 

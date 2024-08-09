@@ -1,6 +1,7 @@
 package frontend
 
 import (
+	"fmt"
 	"html/template"
 	"reflect"
 	"strings"
@@ -13,15 +14,15 @@ templ IndexPage() {
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<link rel="stylesheet" href="/assets/styles/index.css"/>
-			<link rel="stylesheet" href="/assets/styles/screentime.css"/>
+			<link rel="stylesheet" href="/assets/styles/output.css"/>
 			<script src="assets/javascript/script.out.js"></script>
 			<script src="assets/libraries/htmx.min.js"></script>
+			<script src="assets/libraries/hyperscript.min.js"></script>
 			<script src="assets/libraries/echarts.min.js"></script>
 			<title>ScreenTimePage</title>
 		</head>
-		<body>
-			<div class="page">
+		<body class="m-0 p-0 h-full font-serif overflow-hidden">
+			<div class="flex w-full">
 				@sideBarMenu()
 				@screentimeTimePage()
 			</div>
@@ -30,162 +31,131 @@ templ IndexPage() {
 }
 
 templ screentimeTimePage() {
-	<div class="main">
+	<div class="w-full bg-zinc-800">
 		@header()
-		@chartWrapper("", utils.NoAppIconCategoryAndCmdLine)
+		@chartWrapper("", utils.NoAppIconCategoryAndCmdLine, false)
 		@chartControls()
-		@chartHighlight(nil, 0, nil, "")
+		@chartHighlight(nil, 0, "")
 	</div>
 }
 
-templ chartWrapper(chart template.HTML, info utils.AppIconCategoryAndCmdLine) {
-	<div class="chart-wrapper">
-		<div id="echart" hx-swap-oob="true">
+templ chartWrapper(chart template.HTML, info utils.AppIconCategoryAndCmdLine, pieChart bool) {
+	<div class="relative">
+		<div id="echart" hx-swap-oob="true" class="bg-white rounded w-99%">
 			@templ.Raw(chart)
 			if !reflect.ValueOf(info).IsZero() {
+				// for appStat  
 				if info.IsIconSet {
-					<img src={ getImageFilePath(info.AppName, info.Icon) } alt={ info.AppName } class="appIcon"/>
+					<img src={ getImageFilePath(info.AppName, info.Icon) } alt={ info.AppName } class="absolute w-5 h-5 top-1.5 left-1.5"/>
 				} else {
-					<img src="/assets/image/noAppImage.jpg" alt="noImage" class="appIcon"/>
+					<img src="/assets/image/noAppImage.jpg" alt="noImage" class="absolute w-5 h-5 top-1.5 left-1.5"/>
 				}
+				<img src="/assets/svg/back.svg" title="back to weekly chart" hx-get="/back" hx-vals="js:{nonce: Math.random()}" hx-swap="none" hx-select-oob="#echart:innerHTML" class="absolute w-6 h-6 bottom-4 left-4 hover:scale-110"/>
+			}
+			if pieChart {
+				<img src="/assets/svg/back.svg" title="back to weekly chart" hx-get="/back" hx-vals="js:{nonce: Math.random()}" hx-swap="none" hx-select-oob="#echart:innerHTML" class="absolute w-6 h-6 bottom-4 left-4 hover:scale-110"/>
 			}
 		</div>
 	</div>
 }
 
 templ chartControls() {
-	<div class="chart-controls">
-		<div class="left-controls">
-			<div class="select-month">
-				<select name="month" class="month" hx-get="/weekStat?week=month" hx-include="[month='this.value']" hx-vals="js:{nonce: Math.random()}" hx-swap="none" hx-select-oob="#echart:innerHTML,#highlight:outerHTML">
-					<option value="" id="placeholder" disabled selected>Last 3 Month</option>
-					for _, v := range monthDropDownSelectArray(3) {
-						<option class="option" value={ v }>{ v }</option>
-					}
-				</select>
-			</div>
-			<button class="left-controls__btn img backward-arrow" hx-get="/weekStat?week=backward" hx-vals="js:{nonce: Math.random()}" hx-swap="none" hx-select-oob="#echart:innerHTML,#highlight:outerHTML">
-				<img class="chart__controls--img" src="assets/svg/angle-left-svgrepo-com.svg" alt=""/>
+	<div class="bg-black w-full">
+		<div class=" bg-zinc-800 h-12 inline-flex justify-start gap-4 text-lg border-dashed rounded-lg">
+			<select
+				name="month"
+				hx-get="/weekStat?week=month"
+				hx-include="[month='this.value']"
+				hx-vals="js:{nonce: Math.random()}"
+				hx-swap="none"
+				hx-select-oob="#echart:innerHTML,#highlight:outerHTML"
+				class="h-full bg-zinc-800 text-white rounded-none outline-none py-0 px-4 shadow-zinc-800 hover:text-sm"
+			>
+				<option disabled selected value="">Last 3 Month</option>
+				for _, v := range monthDropDownSelectArray(3) {
+					<option class="option" value={ v }>{ v }</option>
+				}
+			</select>
+			<button hx-get="/weekStat?week=backward" hx-vals="js:{nonce: Math.random()}" hx-swap="none" hx-select-oob="#echart:innerHTML,#highlight:outerHTML" class="rounded-l bg-zinc-800 text-white font-bold hover:rounded-l hover:bg-zinc-400">
+				<img src="assets/svg/angle-left-svgrepo-com.svg" alt="" class="w-12"/>
 			</button>
-			<button class="left-controls__btn text" hx-get="/weekStat?week=lastweek" hx-vals="js:{nonce: Math.random()}" hx-swap="none" hx-select-oob="#echart:innerHTML,#highlight:outerHTML">Last Week</button>
-			<button class="left-controls__btn text" id="thisWeekButton" hx-get="/weekStat?week=thisweek" hx-vals="js:{nonce: Math.random()}" hx-swap="none" hx-select-oob="#echart:innerHTML,#highlight:outerHTML">This Week</button>
-			<button class="left-controls__btn img forward-arrow" hx-get="/weekStat?week=forward" hx-vals="js:{nonce: Math.random()}" hx-swap="none" hx-select-oob="#echart:innerHTML,#highlight:outerHTML">
-				<img class="chart__controls--img" src="assets/svg/angle-right-svgrepo-com.svg" alt=""/>
+			<button hx-get="/weekStat?week=lastweek" hx-vals="js:{nonce: Math.random()}" hx-swap="none" hx-select-oob="#echart:innerHTML,#highlight:outerHTML" class="rounded-l bg-zinc-800 text-white font-bold hover:rounded-l hover:bg-zinc-400 hover:text-black max550:text-sm hover:text-sm">Last Week</button>
+			<button hx-get="/weekStat?week=thisweek" hx-vals="js:{nonce: Math.random()}" hx-swap="none" hx-select-oob="#echart:innerHTML,#highlight:outerHTML" _="on load trigger click on me" class="rounded-l bg-zinc-800 text-white font-bold hover:rounded-l hover:bg-zinc-400 hover:text-black max550:text-sm hover:text-sm">This Week</button>
+			<button hx-get="/weekStat?week=forward" hx-vals="js:{nonce: Math.random()}" hx-swap="none" hx-select-oob="#echart:innerHTML,#highlight:outerHTML" class="rounded-l bg-zinc-800 text-white font-bold hover:rounded-l  hover:bg-zinc-400">
+				<img src="assets/svg/angle-right-svgrepo-com.svg" alt="" class="w-12"/>
 			</button>
 		</div>
-		<div class="spacing"></div>
-		<script>
-			document.addEventListener( 'DOMContentLoaded', function ()
-			{
-				const thisWeekButton = document.querySelector( '#thisWeekButton' );
-				if ( thisWeekButton ) {
-					thisWeekButton.click();
-				}	
-			});
-		</script>
 	</div>
 }
 
-templ chartHighlight(appDetails []utils.ApplicationDetail, totalWeekUsage float64, allCategory []utils.Category, anyDay string) {
-	<div class="chart-highlight" id="highlight" hx-swap-obb="true">
-		<ul>
+templ chartHighlight(appDetails []utils.ApplicationDetail, totalWeekUsage float64, anyDay string) {
+	<div id="highlight" hx-swap-obb="true" class="bg-zinc-800 rounded-sm overflow-y-auto min-h-chart-highlight max-h-chart-highlight">
+		<ul class="p-0 m-0 w-99% list-none">
 			for _, app := range appDetails {
-				<li class="card" tabindex="10" hx-get={ string(templ.URL("/appStat?range=week&appName=" + app.AppInfo.AppName + "&start=" + anyDay)) } hx-vals="js:{nonce: Math.random()}" hx-swap="none" hx-select-oob="#echart:outerHTML">
+				<li
+					tabindex="10"
+					hx-get={ string(templ.URL("/appStat?range=week&appName=" + app.AppInfo.AppName + "&start=" + anyDay)) }
+					hx-vals="js:{nonce: Math.random()}"
+					hx-swap="none"
+					class="flex justify-start items-center bg-zinc-800 outline-none text-white rounded-xl pr-1 mr-1 focus:text-black focus:bg-teal-700 focus:shadow-lg focus:scale-90 transition"
+				>
 					if app.AppInfo.IsIconSet {
-						<img src={ getImageFilePath(app.AppInfo.AppName, app.AppInfo.Icon) } alt={ app.AppInfo.AppName } class="app-icon"/>
+						<img src={ getImageFilePath(app.AppInfo.AppName, app.AppInfo.Icon) } alt={ app.AppInfo.AppName } class="max550:hidden h-12 rounded-md"/>
 					} else {
-						<img src="/assets/image/noAppImage.jpg" alt="noImage" class="app-icon"/>
+						<img src="/assets/image/noAppImage.jpg" alt="noImage" class="max550:hidden h-12 rounded-md"/>
 					}
-					<div class="info">
-						<div class="appName" style="font-size:large;font-weight:bold;">{ app.AppInfo.AppName }</div>
-						<div class="desktopCategories" hidden>{ strings.Join(app.AppInfo.DesktopCategories, "  ") }</div>
+					<div class="flex flex-col ml-4">
+						<div class="font-bold text-lg appName">{ app.AppInfo.AppName }</div>
 						if app.AppInfo.IsCategorySet && app.AppInfo.Category.String() != "" {
-							<button disabled class="category" style="color:white;">{ app.AppInfo.Category.String() }</button>
-						} else {
-							if utils.IsInCurrentWeekDate(utils.Date(anyDay)) {
-								<button class="category" onclick="openCategoryDialog(event)">Selct application catergory</button>
-								@setCategoryDialog(allCategory)
-							}
+							<button disabled class="min-w-full rounded-lg bg-zinc-800 text-white text-left">{ app.AppInfo.Category.String() }</button>
+						} else if utils.IsInCurrentWeekDate(utils.Date(anyDay)) {
+							<button id={ app.AppInfo.AppName } hx-get={ "/getCategory?name=" + app.AppInfo.AppName } hx-target="body" hx-swap="beforeend" onclick="event.stopPropagation()" class="bg-zinc-500 hover:scale-105">Select app catergory</button>
 						}
 					</div>
 					if percentageUse := utils.PercentagesString(app.Usage, totalWeekUsage); percentageUse == "NaN" {
-						<div class="appStat" style="font-style:italic;">0% of weeks usage</div>
+						<div class="appStat ml-auto italic">0% of week usage</div>
 					} else {
-						<div class="appStat" style="font-style:italic;">{ percentageUse } of weeks usage: { utils.UsageTimeInHrsMin(app.Usage) }</div>
+						<div class="appStat ml-auto italic">{ percentageUse } of week usage: { utils.UsageTimeInHrsMin(app.Usage) }</div>
 					}
 				</li>
 			}
 		</ul>
-		<script>
-			function openCategoryDialog(event) {
-				const trigger = event.target.parentElement.parentElement; // the li
-				const triggerIconElement = trigger.querySelector('img');
-				const icon = triggerIconElement.getAttribute('src');
-				const appName = trigger.querySelector('.appName').innerHTML;
-				const desktopCategories = trigger.querySelector('.desktopCategories').innerHTML;
-
-				event.stopPropagation();
-
-				// build the modal dialog
-				const dialog = document.getElementById('categoryDialog');
-				const imgElement = dialog.querySelector('form .head img');
-				const headerClassParagraph = dialog.querySelector('form .head p');
-				const dialogLegend = dialog.querySelector('form legend');
-				const dialogHiddenInput = dialog.querySelector('form fieldset+input');
-				const dialogDesktopCategoriesClass = dialog.querySelector('form div+div');
-				imgElement.setAttribute('src', icon);
-				imgElement.setAttribute('alt', appName);
-				dialogHiddenInput.setAttribute('value', appName);
-				headerClassParagraph.innerHTML = `<b>${appName}</b>`
-				dialogLegend.innerHTML = `Select a category for ${appName}:`
-				
-				if (desktopCategories === '' || desktopCategories.trim() === '') {
-					dialogDesktopCategoriesClass.style.display = 'none';
-				} else {
-					dialogDesktopCategoriesClass.innerHTML = `Application file category(s):\n${desktopCategories}`;
-				}
-
-				// show the modal dialog
-				dialog.showModal();
-			};
-		</script>
 	</div>
 }
 
-templ setCategoryDialog(allCategory []utils.Category) {
-	<dialog class="select-category" id="categoryDialog">
-		<form method="post" action="/setCategory">
-			<div class="head">
-				<p></p>
-				<img src="" alt=""/>
+templ CategoryModal(allCategory []utils.Category, appInfo utils.AppIconCategoryAndCmdLine) {
+	<div _="on closeModal remove me" class="w-full h-full fixed top-0 bottom-0 left-0 right-0  backdrop-blur-sm z-10 flex flex-col items-center justify-center">
+		<form id="setCategory" _="on submit trigger closeModal" hx-post={ "/setCategory?appName=" + appInfo.AppName } hx-trigger="submit" hx-swap="none" hx-select-oob={ fmt.Sprintf("#%s:outerHTML", appInfo.AppName) } class="w-2/4 bg-slate-300 rounded-lg p-4">
+			<div class="inline-flex w-full justify-end mt-3 gap-1">
+				<p>{ appInfo.AppName }:</p>
+				<img src={ getImageFilePath(appInfo.AppName, appInfo.Icon) } alt="" class="h-6 w-6"/>
 			</div>
-			<div class="desktop-categories">"</div>
-			<fieldset>
-				<legend></legend>
-				for _, catergory := range allCategory {
-					<div>
-						<input
-							type="radio"
-							name="category"
-							value={ catergory.String() }
-						/>
-						<label for={ catergory.String() }>{ catergory.String() }</label>
-					</div>
+			if len(appInfo.DesktopCategories) > 0 {
+				<p class="">The application custom category says:</p>
+				<p class="bg-black text-white max-w-full rounded mt-2">Application file custom category(s): { strings.Join(appInfo.DesktopCategories, "  ") }</p>
+			}
+			<fieldset class="mt-3 rounded p-2 border-2 border-solid border-black mb-3">
+				<legend class="bg-black text-white py-1 px-2 rounded">Choose application category</legend>
+				for _, category := range allCategory {
+					<input
+						required
+						type="radio"
+						name="category"
+						value={ category.String() }
+						class="m-3"
+					/>
+					<label for={ category.String() }>
+						{ category.String() }
+					</label>
+					<br/>
 				}
 			</fieldset>
-			<input type="hidden" name="appName" value=""/>
-			<p class="space">
-				OR
-			</p>
-			<p class="info">Create a new category in the Settings and update it here.</p>
-			<div class="button-container">
-				<button type="submit">Set category</button>
-				<button class=".close-modal" formmethod="dialog">Close</button>
+			<p class="text-center my-4">OR</p>
+			<p class="text-center">Create a new category in the Settings and update it here.</p>
+			<div class="inline-flex w-full justify-end gap-4 mt-2">
+				<button class="bg-blue-600 p-2 rounded-lg" type="submit" form="setCategory">Set category</button>
+				<button class="bg-red-600 p-2 rounded-lg" _="on click trigger closeModal">Close</button>
 			</div>
 		</form>
-		<script>
-			const setCategoryDialog = document.getElementById('categoryDialog');
-			setCategoryDialog.addEventListener('click', (e) => e.stopPropagation());
-		</script>
-	</dialog>
+	</div>
 }

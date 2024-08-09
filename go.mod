@@ -1,4 +1,4 @@
-module LiScreMon
+module smDaemon
 
 go 1.22.1
 

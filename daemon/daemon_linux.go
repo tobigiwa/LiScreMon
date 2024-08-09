@@ -1,13 +1,12 @@
 package daemon
 
 import (
-	db "LiScreMon/daemon/internal/database"
-	monitoring "LiScreMon/daemon/internal/screen/linux"
-	"LiScreMon/daemon/internal/service"
 	"path/filepath"
+	db "smDaemon/daemon/internal/database"
+	monitoring "smDaemon/daemon/internal/screen/linux"
+	"smDaemon/daemon/internal/service"
 
 	"context"
-	"log"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -19,7 +18,7 @@ import (
 	"github.com/BurntSushi/xgbutil/xevent"
 )
 
-func DaemonServiceLinux(logger *slog.Logger) {
+func DaemonServiceLinux(logger *slog.Logger) error {
 
 	// config directory
 	configDir := utils.APP_CONFIG_DIR
@@ -27,7 +26,7 @@ func DaemonServiceLinux(logger *slog.Logger) {
 	// database
 	badgerDB, err := db.NewBadgerDb(filepath.Join(configDir, "badgerDB"))
 	if err != nil {
-		log.Fatalln(err) // exit
+		return err
 	}
 
 	sig := make(chan os.Signal, 3)
@@ -36,19 +35,19 @@ func DaemonServiceLinux(logger *slog.Logger) {
 	// service
 	service, err := service.NewService(badgerDB)
 	if err != nil {
-		log.Fatalln(err) // exit
+		return err
 	}
 
 	go func() {
 		if err := service.StartService(filepath.Join(configDir, "socket"), badgerDB); err != nil {
-			log.Println("error starting service", err)
+			logger.Error("error starting service:" + err.Error())
 			sig <- syscall.SIGTERM // if service.StartService fails, send a signal to close the program
 		}
 	}()
 
-	monitor, err := monitoring.InitMonitoring(badgerDB)
+	monitor, err := monitoring.InitMonitoring(badgerDB, logger)
 	if err != nil {
-		log.Fatalln(err) // exit
+		return err
 	}
 
 	ctx, ctxCancel := context.WithCancel(context.Background())
@@ -59,27 +58,39 @@ func DaemonServiceLinux(logger *slog.Logger) {
 	}()
 
 	go func() {
-		xevent.Main(monitor.X11Connection) // Start the x11 event loop.
-		log.Println("error starting x11 event loop", err)
+		// Start the x11 event loop.
+		xevent.Main(monitor.X11Connection)
+		logger.Error("error starting x11 event loop:" + err.Error())
 		sig <- syscall.SIGTERM // if the event loop cannot be started, send a signal to close the program
 	}()
 
 	<-sig // awaiting only the first signal
 
-	// err = monitor.Db.UpdateAppInfoManually([]byte("app:Google-chrome"), db.ExampleOf_opsFunc)
+	// err = monitor.Db.UpdateOpertionOnPrefix("app", db.ExampleOf_opsFunc)
 	// if err != nil {
-	// 	fmt.Println("opt failed", err)
+	// 	log.Println("opt failed", err)
+	// }
+	// err = monitor.Db.UpdateOperationOnKey([]byte("Microsoft-edge"), db.ExampleOf_opsFunc)
+	// if err != nil {
+	// 	log.Println("opt failed", err)
 	// }
 
 	xevent.Quit(monitor.X11Connection) // this should always comes first
-	ctxCancel()                        // a different goroutine for managing backing up app usage every minute, fired from monitor
-	monitor.CloseWindowChangeCh()      // a different goroutine,closes a channel, this should be after calling the CancelFunc passed to monitor.WindowChangeTimerFunc
+	ctxCancel()                        // closes the goroutine fired for `monitor.WindowChangeTimerFunc(ctx, timer)`
+	monitor.CloseWindowChangeCh()      // closes the channel used in `monitor.WindowChangeTimerFunc(ctx, timer)`, this should be after calling the CancelFunc passed to `monitor.WindowChangeTimerFunc`
 
 	if !timer.Stop() {
 		<-timer.C
 	}
 
-	service.StopTaskManger() // a different goroutine for managing taskManager, fired from service
-	badgerDB.Close()
+	if err := service.StopTaskManger(); err != nil { // a different goroutine for managing taskManager, fired from service
+		logger.Error(err.Error())
+	}
+
+	if err := badgerDB.Close(); err != nil {
+		logger.Error(err.Error())
+	}
+
 	close(sig)
+	return nil
 }

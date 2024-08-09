@@ -3,7 +3,11 @@ package utils
 import (
 	"fmt"
 	"regexp"
+
+	"github.com/BurntSushi/xgbutil"
 )
+
+var X11Connection *xgbutil.XUtil
 
 var (
 	ErrDeserialization = fmt.Errorf("error deserializing data")

@@ -2,6 +2,8 @@ package main
 
 import (
 	webserver "agent"
+	"flag"
+	"fmt"
 	"net"
 
 	"runtime"
@@ -10,7 +12,6 @@ import (
 
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
@@ -22,8 +23,11 @@ import (
 
 func main() {
 
+	mode := flag.Bool("dev", false, "specify if to build in production or development mode")
+	flag.Parse()
+
 	// logging
-	logger, logFile, err := utils.Logger("webserver.log")
+	logger, logFile, err := utils.Logger("webserver.log", *mode)
 	if err != nil {
 		log.Fatalln(err) // exit
 	}
@@ -32,12 +36,11 @@ func main() {
 	slog.SetDefault(logger)
 
 	var count, port int
-
 	for {
 		count++
-		if port, err = findFreePort(); err != nil {
+		if port, err = findFreePort(*mode); err != nil {
 			if count >= 5 {
-				log.Fatalf("error getting a free port for browser connection: err %v\n", err)
+				log.Fatalf("error getting a free port for browser connection: err %v", err) // exit
 			}
 			time.Sleep(time.Second)
 			continue
@@ -52,7 +55,7 @@ func main() {
 
 	_, err = BrowserAgent.CheckDaemonService()
 	if err != nil {
-		log.Fatalln("error connecting to daemon service:", err)
+		log.Fatalln("error connecting to daemon service:", err) // exit
 	}
 
 	server := &http.Server{
@@ -69,9 +72,9 @@ func main() {
 	_ = writeURLtoJSONConfigFile(url)
 
 	go func() {
-		fmt.Printf("Server is running on %s\n", url)
+		log.Println("Server is running on " + url)
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Println("Server error:", err)
+			logger.Error("Server error: " + err.Error())
 		}
 	}()
 
@@ -83,21 +86,24 @@ func main() {
 	close(done)
 
 	if err := cmd.Wait(); err != nil {
-		fmt.Println("err with browser launch command:", err)
+		logger.Error("err with browser launch command:" + err.Error())
 	}
 
 	if err := BrowserAgent.CloseDaemonConnection(); err != nil {
-		fmt.Println("error closing socket connection with daemon, error:", err)
+		logger.Error("error closing socket connection with daemon, error:" + err.Error())
 	}
 
 	if err := server.Shutdown(context.TODO()); err != nil {
-		fmt.Printf("Graceful server shutdown Failed:%+v\n", err)
+		logger.Error("Graceful server shutdown Failed: " + err.Error())
 	}
 
-	fmt.Println("SERVER STOPPED GRACEFULLY")
+	logger.Info("SERVER STOPPED GRACEFULLY")
 }
 
-func findFreePort() (int, error) {
+func findFreePort(devMode bool) (int, error) {
+	if devMode {
+		return 8080, nil
+	}
 	listener, err := net.Listen("tcp", ":0")
 	if err != nil {
 		return 0, err

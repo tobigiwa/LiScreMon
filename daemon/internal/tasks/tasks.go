@@ -1,9 +1,14 @@
+// Package tasks is meant to handle functionalities that
+// would need scheduling, the github.com/go-co-op/gocron/v2
+// library is used for that.
+// NOTE: This package already depends on `package screen`.
 package tasks
 
 import (
-	monitoring "LiScreMon/daemon/internal/screen/linux"
 	"fmt"
+	"log"
 	"os/exec"
+	monitoring "smDaemon/daemon/internal/screen/linux"
 
 	"reflect"
 	"time"
@@ -15,11 +20,11 @@ import (
 )
 
 type TaskManagerDbRequirement interface {
-	GetTaskByAppName(appName string) ([]utils.Task, error)
 	GetAllTask() ([]utils.Task, error)
 	RemoveTask(id uuid.UUID) error
 	AddTask(task utils.Task) error
 	GetAppTodayActiveStatSoFar(appName string) (float64, error)
+	ReportWeeklyUsage(anyDayInTheWeek time.Time) (string, error)
 }
 
 type TaskManager struct {
@@ -38,7 +43,7 @@ func newTaskManger(dbHandle TaskManagerDbRequirement) *TaskManager {
 
 func (tm *TaskManager) CloseChan() error {
 	if err := tm.gocron.Shutdown(); err != nil {
-		fmt.Println("error shutting down gocron Scheduler:", err)
+		log.Println("error shutting down gocron Scheduler:", err)
 		return err
 	}
 	tm.channel <- utils.Task{}
@@ -79,20 +84,38 @@ func StartTaskManger(dbHandle TaskManagerDbRequirement) (*TaskManager, error) {
 				}
 			}
 
-		case task.Job == utils.DailyAppLimit: // this is a double-check, the oneTime app limit should have been removed when done
-			if task.AppLimit.OneTime && task.AppLimit.Today != utils.Today() { // whether it reached limit or not,for a new day, the limit does not matter again, hence why it is a dailyLimit.
-				if err := tm.dbHandle.RemoveTask(task.UUID); err != nil {
+		case task.Job == utils.DailyAppLimit:
+			if task.AppLimit.OneTime && task.AppLimit.Day != utils.Today() { // this is a double-check, the oneTime app limit should have been removed when done;
+				if err := tm.dbHandle.RemoveTask(task.UUID); err != nil { // whether it reached the limit or not,for a new day, the limit does not matter again, hence why it is a dailyLimit.
 					return nil, fmt.Errorf("%s: %+v :%w", utils.ErrDeletingTask.Error(), task, err)
 				}
-			}
-
-			if task.AppLimit.IsLimitReached && task.AppLimit.Today == utils.Today() {
-				// limit has been reached...and limit was reached that very day
-				continue
 			}
 		}
 
 		tm.channel <- task
+	}
+
+	if _, err := tm.gocron.NewJob(
+		gocron.WeeklyJob(
+			1,
+			gocron.NewWeekdays(time.Sunday),
+			gocron.NewAtTimes(
+				gocron.NewAtTime(9, 0, 0),
+			),
+		),
+		gocron.NewTask(
+			func() {
+				s, err := tm.dbHandle.ReportWeeklyUsage(utils.PreviousWeekSaturday(time.Now()))
+				if err != nil {
+					log.Println("reportlyweek", err)
+					return
+				}
+
+				utils.NotifyWithBeep("Weekly Screentime", s)
+			},
+		),
+	); err != nil {
+		log.Println("error creating weekly job", err)
 	}
 
 	return tm, nil
@@ -107,7 +130,7 @@ func (tm *TaskManager) disperseTask() {
 
 		if reflect.ValueOf(task).IsZero() {
 			close(tm.channel)
-			fmt.Println("closing and cleaning TaskManager")
+			log.Println("closing and cleaning TaskManager")
 			break
 		}
 
@@ -124,9 +147,7 @@ func (tm *TaskManager) disperseTask() {
 			timeSofar, _ := tm.dbHandle.GetAppTodayActiveStatSoFar(task.AppName)
 			monitoring.AddNewLimit(task, timeSofar)
 		}
-
 	}
-
 }
 
 func (tm *TaskManager) reminderWithNoAppLaunch(task utils.Task) {
@@ -144,7 +165,7 @@ func (tm *TaskManager) reminderWithNoAppLaunch(task utils.Task) {
 			}),
 		),
 	); err != nil {
-		fmt.Println("error creating job", err)
+		log.Println("error creating job", err)
 	}
 
 }
@@ -162,12 +183,12 @@ func (tm *TaskManager) reminderWithAppLaunch(task utils.Task) {
 					cmd := exec.Command("bash", "-c", task.CmdLine)
 					err := cmd.Start()
 					if err != nil {
-						fmt.Println(err)
+						log.Println(err)
 					}
 
 					err = cmd.Wait()
 					if err != nil {
-						fmt.Printf("Command finished with error: %v", err)
+						log.Printf("Command finished with error: %v", err)
 					}
 				}),
 			gocron.AfterJobRuns(func(jobID uuid.UUID, jobName string) {
@@ -191,7 +212,7 @@ func (tm *TaskManager) preNotify(task utils.Task) {
 			gocron.OneTimeJob(gocron.OneTimeJobStartDateTime(t)),
 			gocron.NewTask(preNotifyAlert, task.UI.Title, notifyBeForeReminder, withSound),
 			gocron.WithTags(task.UUID.String())); err != nil {
-			fmt.Println("gocron failed to add notififcation", err)
+			log.Println("gocron failed to add notififcation", err)
 		}
 	}
 }

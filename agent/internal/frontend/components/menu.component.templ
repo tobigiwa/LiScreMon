@@ -1,22 +1,22 @@
 package frontend
 
 templ sideBarMenu() {
-	<div class="menu">
+	<div class="flex flex-col gap-4 bg-zinc-800 min-h-full w-80 pt-14 max550:w-fit">
 		@animation()
 		@menuItems()
 	</div>
 }
 
 templ animation() {
-	<div class="hold-animation">
-		<div class="wrap-animation">
-			<div class="animation" id="lottie-animation"></div>
+	<div class="bg-zinc-800 flex flex-col items-center px-2.5 relative basis-16 max550:hidden after:contents-[''] after:absolute after:bottom-0 after:left-2.5 after:right-2.5 after:border-b after:border-solid after:border-white w-white-line">
+		<div class="bg-black w-4/5 rounded-lg">
+			<div class="w-full h-full" id="lottie-animation"></div>
 		</div>
-		<div class="quote-animation">
-			<p>'If You Can't Measure It, You Can't Manage It'</p>
+		<div class="p-6 text-center">
+			<p class="text-white">'If You Can't Measure It, You Can't Manage It'</p>
 		</div>
 		<script src="assets/libraries/lottie.min.js"></script>
-		<script>
+		<script type="text/javascript">
 		document.addEventListener( 'DOMContentLoaded', function ()
 		{
 			lottie.loadAnimation( {
@@ -27,116 +27,78 @@ templ animation() {
 				path: "assets/animation/Animation - 1712666371830.json"
 			} );
 		} );
-
 		</script>
 	</div>
 }
 
 templ menuItems() {
-	<div class="menu-items">
+	<div class="flex flex-col grow shrink">
 		<nav>
-			<ul>
-				<li class="wide">
-					<a href="/screentime" class="links" tabindex="0">
-						<img
-							src="assets/svg/no_1.svg"
-							class="icon"
-						/>Screentime
+			<ul class="p-0 flex flex-col gap-5 list-none">
+				<li class="links max550:hidden">
+					<a href="/screentime" tabindex="0" class="font-bold italic text-lg text-white p-3.5 outline-none rounded-md flex text-center items-center focus:bg-teal-800">
+						<img src="assets/svg/no_1.svg" class="w-12 h-9 mr-2"/>
+						Screentime
 					</a>
 				</li>
-				<li class="wide">
-					<a href="#" class="links wide" tabindex="0">
-						<img
-							src="assets/svg/no_3.svg"
-							class="icon"
-						/>Analytics
+				<li title="Screentime" class="links max550:flex hidden">
+					<a href="#" tabindex="0" class="font-bold italic text-lg text-white p-3.5 outline-none rounded-md flex text-center items-center focus:bg-teal-800">
+						<img src="assets/svg/no_1.svg" class="w-12 h-9 mr-2"/>
 					</a>
 				</li>
-				<li class="wide">
-					<a href="/tasks" class="links wide" tabindex="0">
-						<img
-							src="assets/svg/no_4.svg"
-							class="icon"
-							style="vertical-align: top;"
-						/>
-						<div class="long-text" style="display: inline-block;">
-							// Alerts
-							// <br/>
-							// & Remainder
-							Tasks
-						</div>
+				<li class="links max550:hidden">
+					<a href="#" tabindex="0" class="font-bold italic text-lg text-white p-3.5 outline-none rounded-md flex text-center items-center focus:bg-teal-800 max550:hidden">
+						<img src="assets/svg/no_3.svg" class="w-12 h-9 mr-2"/>
+						Analytics
 					</a>
 				</li>
-				<li class="wide">
-					<a href="#" class="links wide" tabindex="0">
-						<img
-							src="assets/svg/no_2.svg"
-							class="icon"
-						/>ToDo
+				<li class="links max550:flex hidden" title="Analytics">
+					<a href="#" tabindex="0" class="font-bold italic text-lg text-white p-3.5 outline-none rounded-md flex text-center items-center focus:bg-teal-800">
+						<img src="assets/svg/no_3.svg" class="w-12 h-9 mr-2"/>
 					</a>
 				</li>
-				<li class="hidden">
-					<a href="#" class="links" tabindex="0">
-						<img
-							src="assets/svg/no_5_settings.svg"
-							class="icon"
-						/>Settings
+				<li class="links max550:hidden">
+					<a href="/tasks" tabindex="0" class="font-bold italic text-lg text-white p-3.5 outline-none rounded-md flex text-center items-center focus:bg-teal-800 max550:hidden">
+						<img src="assets/svg/no_4.svg" class="w-12 h-9 mr-2 align-top"/>
+						Tasks
 					</a>
 				</li>
-				<li class="hidden">
-					<a href="#" class="links" tabindex="0">
-						<img
-							src="assets/svg/no_6_logout.svg"
-							class="icon"
-						/>Logout
+				<li class="links max550:flex hidden" title="Tasks">
+					<a href="#" tabindex="0" class="font-bold italic text-lg text-white p-3.5 outline-none rounded-md flex text-center items-center focus:bg-teal-800">
+						<img src="assets/svg/no_4.svg" class="w-12 h-9 mr-2"/>
 					</a>
 				</li>
-				<li class="narrow" title="Screentime">
-					<a href="#" class="links" tabindex="0">
-						<img
-							src="assets/svg/no_1.svg"
-							class="icon"
-						/>
+				<li class="links max550:hidden">
+					<a href="#" tabindex="0" class="font-bold italic text-lg text-white p-3.5 outline-none rounded-md flex text-center items-center focus:bg-teal-800 max550:hidden">
+						<img src="assets/svg/no_2.svg" class="w-12 h-9 mr-2"/>
+						ToDo
 					</a>
 				</li>
-				<li class="narrow" title="Analytics">
-					<a href="#" class="links" tabindex="0">
-						<img
-							src="assets/svg/no_3.svg"
-							class="icon"
-						/>
+				<li class="links max550:flex hidden" title="ToDo">
+					<a href="#" tabindex="0" class="font-bold italic text-lg text-white p-3.5 outline-none rounded-md flex text-center items-center focus:bg-teal-800">
+						<img src="assets/svg/no_2.svg" class="w-12 h-9 mr-2"/>
 					</a>
 				</li>
-				<li class="narrow" title="Alerts & Remainder">
-					<a href="#" class="links" tabindex="0">
-						<img
-							src="assets/svg/no_4.svg"
-							class="icon"
-						/>
+				<li class="links hidden max650:flex max550:hidden ">
+					<a href="#" tabindex="0" class="font-bold italic text-lg text-white p-3.5 outline-none rounded-md flex text-center items-center focus:bg-teal-800">
+						<img src="assets/svg/no_5_settings.svg" class="w-12 h-9 mr-2"/>
+						Settings
 					</a>
 				</li>
-				<li class="narrow" title="ToDo  ">
-					<a href="#" class="links" tabindex="0">
-						<img
-							src="assets/svg/no_2.svg"
-							class="icon"
-						/>
+				<li class="links hidden max550:flex" title="Settings">
+					<a href="#" tabindex="0" class="font-bold italic text-lg text-white p-3.5 outline-none rounded-md flex text-center items-center focus:bg-teal-800">
+						<img src="assets/svg/no_5_settings.svg" class="w-12 h-9 mr-2"/>
 					</a>
 				</li>
-				<li class="narrow" title="Settings">
-					<a href="#" class="links" tabindex="0">
-						<img
-							src="assets/svg/no_5_settings.svg"
-							class="icon"
-						/>
+				<li class="links hidden max650:flex max550:hidden ">
+					<a href="#" tabindex="0" class="font-bold italic text-lg text-white p-3.5 outline-none rounded-md flex text-center items-center focus:bg-teal-800">
+						<img src="assets/svg/no_6_logout.svg" class="w-12 h-9 mr-2"/>
+						Logout
 					</a>
 				</li>
-				<li class="narrow" title="Logout">
-					<a href="#" class="links" tabindex="0">
-						<img
-							src="assets/svg/no_6_logout.svg"
-							class="icon"
-						/>
+				<li class="links hidden max550:flex" title="Logout">
+					<a href="#" tabindex="0" class="font-bold italic text-lg text-white p-3.5 outline-none rounded-md flex text-center items-center focus:bg-teal-800">
+						<img src="assets/svg/no_6_logout.svg" class="w-12 h-9 mr-2"/>
 					</a>
 				</li>
 			</ul>

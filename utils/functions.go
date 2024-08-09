@@ -49,32 +49,71 @@ func AddOrdinalSuffix(n int) string {
 	}
 }
 
-func ParseKey(key Date) (time.Time, error) {
-	return time.Parse(TimeFormat, string(key))
+func ToTimeType(d Date) (t time.Time) {
+	t, _ = time.Parse(TimeFormat, string(d)) // This is safe because the date is already validated
+	return
+}
+
+func ToDateType(t time.Time) Date {
+	return Date(t.Format(TimeFormat))
+}
+
+func IsFutureWeek(t time.Time) bool {
+	now := time.Now()
+
+	// Adjust the week start day to Sunday
+	now = now.AddDate(0, 0, int(time.Sunday-now.Weekday()))
+	t = t.AddDate(0, 0, int(time.Sunday-t.Weekday()))
+
+	_, currentWeek := now.ISOWeek()
+	_, inputWeek := t.ISOWeek()
+
+	return inputWeek > currentWeek
+}
+
+func IsPastWeek(t time.Time) bool {
+	now := time.Now()
+
+	// Adjust the week start day to Sunday
+	now = now.AddDate(0, 0, int(time.Sunday-now.Weekday()))
+	t = t.AddDate(0, 0, int(time.Sunday-t.Weekday()))
+
+	_, currentWeek := now.ISOWeek()
+	_, inputWeek := t.ISOWeek()
+
+	return inputWeek < currentWeek
+}
+
+func DaysInThatWeek(w time.Time) [7]Date {
+	var arr [7]Date
+	startOftheWeek := w.AddDate(0, 0, -int(w.Weekday()))
+	for i := 0; i < 7; i++ {
+		arr[i] = Date(fmt.Sprint(startOftheWeek.AddDate(0, 0, i).Format(TimeFormat)))
+	}
+	return arr
 }
 func Today() Date {
 	return Date(time.Now().Format(TimeFormat))
 }
 func FormattedDay(date Date) string {
-	day, _ := ParseKey(date)
+	day := ToTimeType(date)
 	dayWithSuffix := AddOrdinalSuffix(day.Day())
 	weekDay := strings.TrimSuffix(day.Weekday().String(), "day")
 	return fmt.Sprintf("%v. %v", weekDay, dayWithSuffix)
 }
 
 func MonthAndYear(date Date) (month, year string) {
-	day, _ := ParseKey(date)
-	y, mon, _ := day.Date()
+	y, mon, _ := ToTimeType(date).Date()
 	month, year = mon.String(), fmt.Sprint(y)
 	return month, year
 }
 
-func percent(part, total float64) float64 {
+func calculatePercentage(part, total float64) float64 {
 	return (part / total) * 100
 }
 
 func PercentagesString(part, total float64) string {
-	p := percent(part, total)
+	p := calculatePercentage(part, total)
 	if math.IsNaN(p) {
 		return "NaN"
 	}
@@ -121,29 +160,33 @@ func LastSaturdayOfTheMonth(month string) string {
 	return s.Format(TimeFormat)
 }
 
-func ReturnLastWeekSaturday(t time.Time) Date {
+func PreviousWeekSaturday(t time.Time) time.Time {
 
 	if t.Weekday() == time.Saturday {
-		return Date(t.AddDate(0, 0, -7).Format(TimeFormat))
+		return t.AddDate(0, 0, -7)
 	}
 
-	daysSinceSaturday := int(t.Weekday()+1) % 7
-	return Date(t.AddDate(0, 0, -daysSinceSaturday).Format(TimeFormat))
+	daysSinceSaturday := (t.Weekday() + 1) % 7
+	return t.AddDate(0, 0, -int(daysSinceSaturday))
 }
 
+func NexWeektSaturday(t time.Time) time.Time {
+
+	if t.Weekday() == time.Saturday {
+		return t.AddDate(0, 0, 7)
+	}
+
+	daysSinceSaturday := (t.Weekday() + 1) % 7
+	return t.AddDate(0, 0, int(daysSinceSaturday))
+}
 func IsFutureDate(t time.Time) bool {
 	today := time.Now()
 	nextWeekDay := t.AddDate(0, 0, 7)
 	return nextWeekDay.After(today)
 }
 
-func ReturnNexWeektSaturday(saturday time.Time) Date {
-	return Date(saturday.AddDate(0, 0, 7).Format(TimeFormat))
-}
-
 func FormattedToDay() time.Time {
-	t, _ := ParseKey(Date(time.Now().Format(TimeFormat)))
-	return t
+	return ToTimeType(Date(time.Now().Format(TimeFormat)))
 }
 
 func AllTheDaysInMonth(year, month string) ([]Date, error) {
@@ -177,7 +220,6 @@ func IsInCurrentWeekTime(t time.Time) bool {
 }
 
 func IsInCurrentWeekDate(d Date) bool {
-	// t, _ := d.ToTime()
 	return SaturdayOfTheWeek(time.Now()) == d
 }
 

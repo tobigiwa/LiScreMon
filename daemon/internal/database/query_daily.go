@@ -13,7 +13,7 @@ import (
 
 func (bs *BadgerDBStore) GetDay(date utils.Date) (DailyStat, error) {
 
-	if day, _ := utils.ParseKey(date); day.After(utils.FormattedToDay()) {
+	if day := utils.ToTimeType(date); day.After(utils.FormattedToDay()) {
 		return ZeroValueDailyStat, ErrFutureDay
 	}
 
@@ -101,12 +101,10 @@ func (bs *BadgerDBStore) getDailyAppStat(day utils.Date) (DailyStat, error) {
 
 	if day != utils.Today() {
 		byteData, _ := utils.EncodeJSON(result)
-		err := bs.setOrUpdateKeyValue(dbDayKey(day), byteData)
-		if err != nil {
+		if err := bs.setOrUpdateKeyValue(dbDayKey(day), byteData); err != nil {
 			fmt.Println("ERROR WRITING NEW DAY ENTRY", day, "ERROR IS:", err)
-		} else {
-			fmt.Println("WRITING NEW DAY ENTRY", day)
 		}
+		fmt.Println("WRITING NEW DAY ENTRY", day)
 	}
 
 	return result, nil

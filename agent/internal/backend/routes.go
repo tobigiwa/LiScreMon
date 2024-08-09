@@ -20,14 +20,16 @@ func (a *App) Routes() *http.ServeMux {
 	mux.HandleFunc("GET /weekStat", a.WeekStatHandler)
 	mux.HandleFunc("GET /appStat", a.AppStatHandler)
 	mux.HandleFunc("GET /dayStat", a.DayStatHandler)
+	mux.HandleFunc("GET /getCategory", a.getCategory)
+	mux.HandleFunc("GET /back", a.backHandler)
 	mux.HandleFunc("POST /setCategory", a.SetCategory)
 
 	// ReminderAndLimitPage
 	mux.HandleFunc("GET /tasks", a.tasksPage)
 	mux.HandleFunc("GET /reminders", a.ReminderTasksHandler)
-	mux.HandleFunc("GET /appLimits", a.appLimitTasksHandler)
+	mux.HandleFunc("GET /limits", a.limitTasksHandler)
 	mux.HandleFunc("POST /newReminder", a.newReminderHandler)
-	mux.HandleFunc("POST /newAppLimit", a.newAppLimitHandler)
+	mux.HandleFunc("POST /newLimit", a.newDaillyAppLimitHandler)
 	mux.HandleFunc("POST /removeTask/{uuid}", a.removeTask)
 
 	switch runtime.GOOS {

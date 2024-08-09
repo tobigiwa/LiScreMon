@@ -1,0 +1,171 @@
+syntax = "proto3";
+
+package utils;
+
+import "google/protobuf/timestamp.proto";
+
+message Message {
+  string endpoint = 1;
+  string statusCheck = 2;
+  bool isError = 3;
+  string error = 4;
+  SetCategoryRequest setCategoryRequest = 5;
+  SetCategoryResponse setCategoryResponse = 6;
+  Date dayStatRequest = 7;
+  DayStatMessage dayStatResponse = 8;
+  Date weekStatRequest = 9;
+  WeekStatMessage weekStatResponse = 10;
+  AppStatRequest appStatRequest = 11;
+  AppStatMessage appStatResponse = 12;
+  Task reminderAndLimitRequest = 13;
+  ReminderMessage reminderAndLimitResponse = 14;
+}
+
+message SetCategoryRequest {
+  string appName = 1;
+  string category = 2;
+}
+
+message SetCategoryResponse {
+  bool isCategorySet = 1;
+}
+
+message ReminderMessage {
+  Task task = 1;
+  bool taskOptSuccessful = 2;
+  repeated Task allTask = 3;
+  repeated AppIconCategoryAndCmdLine allApps = 4;
+}
+
+message WeekStatMessage {
+  repeated string keys = 1;
+  repeated string formattedDay = 2;
+  repeated double values = 3;
+  double totalWeekUptime = 4;
+  string month = 5;
+  string year = 6;
+  repeated ApplicationDetail appDetail = 7;
+  repeated string allCategory = 8;
+}
+
+message DayStatMessage {
+  repeated AppStat eachApp = 1;
+  Stats dayTotal = 2;
+  string date = 3;
+}
+
+message AppStatRequest {
+  string appName = 1;
+  string month = 2;
+  string year = 3;
+  string statRange = 4;
+  Date start = 5;
+  Date end = 6;
+}
+
+message AppStatMessage {
+  repeated string formattedDay = 1;
+  repeated double values = 2;
+  string month = 3;
+  string year = 4;
+  double totalRangeUptime = 5;
+  AppIconCategoryAndCmdLine appInfo = 6;
+}
+
+message AppIconCategoryAndCmdLine {
+  string appName = 1;
+  bytes icon = 2;
+  bool isIconSet = 3;
+  bool isCmdLineSet = 4;
+  string cmdLine = 5;
+  string category = 6;
+  bool isCategorySet = 7;
+  repeated string desktopCategories = 8;
+}
+
+message ApplicationDetail {
+  AppIconCategoryAndCmdLine appInfo = 1;
+  double usage = 2;
+  Date anyDayInStat = 3;
+}
+
+message GenericKeyValue {
+  string key = 1;
+  string value = 2; // Use appropriate type for value if needed
+}
+
+message AppRangeStat {
+  AppIconCategoryAndCmdLine appInfo = 1;
+  repeated GenericKeyValue daysRange = 2;
+  Stats totalRange = 3;
+}
+
+message AppStat {
+  string appName = 1;
+  Stats usage = 2;
+}
+
+message Date {
+  string value = 1; // Assuming Date is a string representation
+}
+
+message Stats {
+  double active = 1;
+  double open = 2;
+  double inactive = 3;
+  repeated TimeInterval activeTimeData = 4;
+}
+
+message TimeInterval {
+  google.protobuf.Timestamp start = 1;
+  google.protobuf.Timestamp end = 2;
+}
+
+message ScreenTime {
+  uint32 windowID = 1;
+  string appName = 2;
+  string type = 3;
+  double duration = 4;
+  TimeInterval interval = 5;
+}
+
+message Task {
+  AppIconCategoryAndCmdLine appIconCategoryAndCmdLine = 1;
+  TaskTime taskTime = 2;
+  string UUID = 3;
+  UItextInfo ui = 4;
+  string job = 5;
+}
+
+message UItextInfo {
+  string title = 1;
+  string subtitle = 2;
+  string notes = 3;
+}
+
+message TaskTime {
+  AppLimit appLimit = 1;
+  Reminder reminder = 2;
+}
+
+message Reminder {
+  google.protobuf.Timestamp startTime = 1;
+  google.protobuf.Timestamp endTime = 2;
+  repeated int32 alertTimesInMinutes = 3;
+  repeated bool alertSound = 4;
+}
+
+message AppLimit {
+  double limit = 1;
+  bool oneTime = 2;
+  bool exitApp = 3;
+  Date today = 4;
+  bool isLimitReached = 5;
+}
+
+message ConfigFile {
+  string name = 1;
+  string description = 2;
+  string version = 3;
+  string browserAddr = 4;
+}

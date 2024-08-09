@@ -42,8 +42,7 @@ func (bs *BadgerDBStore) GetAppIconCategoryAndCmdLine(appNames []string) ([]util
 }
 
 func (bs *BadgerDBStore) AppWeeklyStat(appName string, anyDayInTheWeek utils.Date) (utils.AppRangeStat, error) {
-	date, _ := utils.ParseKey(anyDayInTheWeek)
-	days := daysInThatWeek(date)
+	days := utils.DaysInThatWeek(utils.ToTimeType(anyDayInTheWeek))
 	return bs.appRangeStat(appName, days[:])
 }
 
@@ -56,8 +55,8 @@ func (bs *BadgerDBStore) AppMonthlyStat(appName, month, year string) (utils.AppR
 }
 
 func (bs *BadgerDBStore) AppDateRangeStat(appName string, start, end utils.Date) (utils.AppRangeStat, error) {
-	startDate, _ := utils.ParseKey(start)
-	endDate, _ := utils.ParseKey(end)
+	startDate := utils.ToTimeType(start)
+	endDate := utils.ToTimeType(end)
 
 	if !endDate.After(startDate) {
 		return utils.AppRangeStat{}, errors.New("end date is not after start date")

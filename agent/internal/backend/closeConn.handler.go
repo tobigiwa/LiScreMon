@@ -1,9 +1,6 @@
 package backend
 
 import (
-	"context"
-	"log/slog"
-
 	utils "utils"
 )
 
@@ -15,11 +12,11 @@ func (a *App) CloseDaemonConnection() error {
 
 	bytes, err := utils.EncodeJSON(msg)
 	if err != nil {
-		a.logger.Log(context.TODO(), slog.LevelError, err.Error())
+		a.logger.Error(err.Error())
 		return err
 	}
 	if _, err = a.daemonConn.Write(bytes); err != nil {
-		a.logger.Log(context.TODO(), slog.LevelError, err.Error())
+		a.logger.Error(err.Error())
 		return err
 	}
 	return a.daemonConn.Close()

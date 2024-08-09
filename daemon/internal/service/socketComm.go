@@ -1,14 +1,18 @@
+// `Package service` is the package that houses the
+// functionalites that attends to the need of the agent.
+// It can depend on all other packages/directories in `internal`.
 package service
 
 import (
-	db "LiScreMon/daemon/internal/database"
-	"LiScreMon/daemon/internal/tasks"
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"os"
 	"path/filepath"
+	db "smDaemon/daemon/internal/database"
+	"smDaemon/daemon/internal/tasks"
 
 	"syscall"
 	utils "utils"
@@ -32,17 +36,17 @@ func NewService(db *db.BadgerDBStore) (*Service, error) {
 
 func (s *Service) StartService(socketDir string, db *db.BadgerDBStore) error {
 
-	SocketConn, err := domainSocket(socketDir)
+	listener, err := unixDomainSocket(socketDir)
 	if err != nil {
 		return err
 	}
-	s.handleConnection(SocketConn) // blocking
+	s.handleConnection(listener) // blocking
 
-	SocketConn.Close()
+	listener.Close()
 	return nil
 }
 
-func domainSocket(socketDir string) (*net.UnixListener, error) {
+func unixDomainSocket(socketDir string) (*net.UnixListener, error) {
 
 	var (
 		conn     *net.UnixListener
@@ -76,15 +80,15 @@ func (s *Service) handleConnection(listener *net.UnixListener) {
 		c, err := listener.Accept()
 		if err != nil {
 			if errors.Is(err, net.ErrClosed) {
-				fmt.Println("connection closed, daemonService says 🖐")
+				log.Println("connection closed, daemonService says 🖐")
 				return
 			} else {
-				fmt.Println("error accepting connection...buh we muuve:", err)
+				log.Println("error accepting connection...buh we muuve:", err)
 				continue
 			}
 		}
 
-		fmt.Println("Connection accepted")
+		log.Println("Connection accepted")
 		go s.treatMessage(c)
 	}
 }
@@ -99,9 +103,9 @@ func (s *Service) treatMessage(c net.Conn) {
 
 		buf := make([]byte, 10_000) //10kb
 		if n, err = c.Read(buf); err != nil {
-			fmt.Println("error reading message:", err)
+			log.Println("error reading message:", err)
 			if errors.Is(err, io.EOF) {
-				fmt.Println("client connection closed")
+				log.Println("client connection closed")
 				c.Close()
 				return
 			}
@@ -109,7 +113,7 @@ func (s *Service) treatMessage(c net.Conn) {
 		}
 
 		if msg, err = utils.DecodeJSON[utils.Message](buf[:n]); err != nil {
-			fmt.Println("error decoding socket message", err)
+			log.Println("error decoding socket message", err)
 			c.Close()
 			return
 		}
@@ -124,7 +128,7 @@ func (s *Service) treatMessage(c net.Conn) {
 			return
 
 		case "weekStat":
-			msg.WeekStatResponse, err = s.getWeekStat(msg.WeekStatRequest)
+			msg.WeekStatResponse, err = s.getWeekStat(msg.WeekStatRequest, false)
 
 		case "appStat":
 			msg.AppStatResponse, err = s.getAppStat(msg.AppStatRequest)
@@ -135,23 +139,30 @@ func (s *Service) treatMessage(c net.Conn) {
 		case "setCategory":
 			msg.SetCategoryResponse, err = s.setAppCategory(msg.SetCategoryRequest)
 
+		case "getCategory":
+			msg.GetCategoryResponse, err = s.getCategory()
+
 		case "tasks":
-			msg.ReminderAndLimitResponse, err = s.tasks()
+			msg.TaskResponse, err = s.tasks()
 
 		case "reminders":
-			msg.ReminderAndLimitResponse, err = s.allReminderTask()
+			msg.TaskResponse, err = s.allReminderTask()
 
-		case "appLimits":
-			msg.ReminderAndLimitResponse, err = s.allDailyAppLimitTask()
+		case "limits":
+			msg.TaskResponse, err = s.allDailyAppLimitTask()
 
 		case "newReminder":
-			msg.ReminderAndLimitResponse, err = s.addNewReminder(msg.ReminderAndLimitRequest)
+			msg.TaskResponse, err = s.addNewReminder(msg.TaskRequest)
 
-		case "newAppLimit":
-			msg.ReminderAndLimitResponse, err = s.addNewLimitApp(msg.ReminderAndLimitRequest)
+		case "newLimit":
+			msg.TaskResponse, err = s.addNewLimitApp(msg.TaskRequest)
 
 		case "removeTask":
-			msg.ReminderAndLimitResponse, err = s.removeTask(msg.ReminderAndLimitRequest)
+			msg.TaskResponse, err = s.removeTask(msg.TaskRequest)
+
+		case "back":
+			msg.WeekStatResponse, err = s.getWeekStat(msg.WeekStatRequest, true)
+
 		}
 
 		if err != nil {
@@ -165,7 +176,7 @@ func (s *Service) treatMessage(c net.Conn) {
 
 		_, err = c.Write(bytes)
 		if err != nil {
-			fmt.Println("error writing response:", err)
+			log.Println("error writing response:", err)
 			continue
 		}
 	}
@@ -175,6 +186,6 @@ func closeConnection(c net.Conn) {
 	fmt.Println("we got a close connection message")
 	err := c.Close()
 	if err != nil {
-		fmt.Println("ERROR CLOSING CONNECTION")
+		log.Println("ERROR CLOSING CONNECTION")
 	}
 }

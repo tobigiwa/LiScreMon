@@ -6,6 +6,7 @@ package cli
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"os/exec"
 	"strconv"
 	"syscall"
@@ -23,10 +24,10 @@ var stopCmd = &cobra.Command{
 When this command is invoked, it prints "stop called" to the standard output and then terminates the application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		if err := stopLiscrenMon(); err != nil {
-			fmt.Println(err)
+		if err := stopScreenMonitor(); err != nil {
+			log.Println(err)
 		}
-		fmt.Println("LiScreMon stopped successfully")
+		log.Println("smDaemon stopped successfully")
 
 	},
 }
@@ -35,19 +36,18 @@ func init() {
 	rootCmd.AddCommand(stopCmd)
 }
 
-func stopLiscrenMon() (Error error) {
+func stopScreenMonitor() (Error error) {
 
-	result, err := exec.Command("pidof", "LiScreMon").CombinedOutput()
+	result, err := exec.Command("pidof", "smDaemon").CombinedOutput()
 	if err != nil {
-		Error = fmt.Errorf("%w:%w", Error, err)
-		return
+		return err
 	}
 
 	arrayOfpidByte := bytes.Split(result, []byte(" "))
 
 	if len(arrayOfpidByte) == 1 { // the running program
-		fmt.Println("LiScreMon was not running")
-		return
+		log.Println("smDaemon was not running")
+		return nil
 	}
 
 	for i := 1; i < len(arrayOfpidByte); i++ { // the first one is the running program itself

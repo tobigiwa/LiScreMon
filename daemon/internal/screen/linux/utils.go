@@ -2,6 +2,7 @@ package monitoring
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/BurntSushi/xgb/xproto"
 	"github.com/BurntSushi/xgbutil"
@@ -15,8 +16,7 @@ func currentlyOpenedWindows(X *xgbutil.XUtil) ([]xproto.Window, error) {
 }
 
 func setRootEventMask(X *xgbutil.XUtil) error {
-	err := xproto.ChangeWindowAttributesChecked(X.Conn(), X.RootWin(), xproto.CwEventMask,
-		[]uint32{xproto.EventMaskPropertyChange | xproto.EventMaskSubstructureNotify}).Check()
+	err := xproto.ChangeWindowAttributesChecked(X.Conn(), X.RootWin(), xproto.CwEventMask, []uint32{xproto.EventMaskPropertyChange | xproto.EventMaskSubstructureNotify}).Check()
 	if err != nil {
 		return fmt.Errorf("failed to set eventMask on root widow:%w", err)
 	}
@@ -24,11 +24,9 @@ func setRootEventMask(X *xgbutil.XUtil) error {
 }
 
 func registerWindowForEvents(windowID xproto.Window) {
-	err := xproto.ChangeWindowAttributesChecked(x11Conn.Conn(), windowID, xproto.CwEventMask,
-		[]uint32{
-			xproto.EventMaskStructureNotify}).Check()
+	err := xproto.ChangeWindowAttributesChecked(x11Conn.Conn(), windowID, xproto.CwEventMask, []uint32{xproto.EventMaskStructureNotify}).Check()
 	if err != nil {
-		fmt.Printf("Failed to select notify events for window:%v, error: %v", windowID, err)
+		log.Printf("Failed to select notify events for window:%v, error: %v", windowID, err)
 	}
 
 	registerWindow(windowID)
@@ -59,7 +57,6 @@ func getWindowClassName(X *xgbutil.XUtil, win xproto.Window) (string, error) {
 
 	name, err2 := checkQueryTreeForParent(X, win)
 	if err2 == nil && (name != "") {
-		fmt.Println("WE GOT THIS NAME AND WIN", name, win)
 		addWindowTocurSessionNamedWindowMap(win, name) // we got a name, so we add it
 		return name, nil
 	}

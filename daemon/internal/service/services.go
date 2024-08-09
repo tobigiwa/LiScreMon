@@ -1,12 +1,12 @@
 package service
 
 import (
-	db "LiScreMon/daemon/internal/database"
-	monitoring "LiScreMon/daemon/internal/screen/linux"
-	"LiScreMon/daemon/internal/tasks"
+	"fmt"
+	db "smDaemon/daemon/internal/database"
+	monitoring "smDaemon/daemon/internal/screen/linux"
+	"smDaemon/daemon/internal/tasks"
 
 	"cmp"
-	"fmt"
 
 	"slices"
 	"strings"
@@ -23,12 +23,11 @@ func (s *Service) StopTaskManger() error {
 	return s.taskManager.CloseChan()
 }
 
-func (s *Service) getWeekStat(msg utils.Date) (utils.WeekStatMessage, error) {
+func (s *Service) getWeekStat(msg utils.Date, chartOnly bool) (utils.WeekStatMessage, error) {
 	var (
-		weekStat    db.WeeklyStat
-		appsInfo    []utils.AppIconCategoryAndCmdLine
-		allCategory []utils.Category
-		err         error
+		weekStat db.WeeklyStat
+		appsInfo []utils.AppIconCategoryAndCmdLine
+		err      error
 	)
 
 	if weekStat, err = s.db.GetWeek(msg); err != nil {
@@ -56,6 +55,19 @@ func (s *Service) getWeekStat(msg utils.Date) (utils.WeekStatMessage, error) {
 		appNameInTheWeek = append(appNameInTheWeek, weekStat.EachApp[i].AppName)
 	}
 
+	res := utils.WeekStatMessage{
+		Keys:            keys,
+		FormattedDay:    formattedDay,
+		Values:          values,
+		TotalWeekUptime: weekStat.WeekTotal.Active,
+		Month:           month,
+		Year:            fmt.Sprint(year),
+	}
+
+	if chartOnly {
+		return res, nil
+	}
+
 	if appsInfo, err = s.db.GetAppIconCategoryAndCmdLine(appNameInTheWeek); err != nil {
 		return utils.NoMessage.WeekStatResponse, fmt.Errorf("err with GetAppIconAndCategory:%w", err)
 	}
@@ -64,21 +76,8 @@ func (s *Service) getWeekStat(msg utils.Date) (utils.WeekStatMessage, error) {
 		appCard = append(appCard, utils.ApplicationDetail{AppInfo: appsInfo[i], Usage: weekStat.EachApp[i].Usage.Active})
 	}
 
-	if allCategory, err = s.db.GetAllACategories(); err != nil {
-		return utils.NoMessage.WeekStatResponse, fmt.Errorf("err with GetAllCategories:%w", err)
-	}
-
-	return utils.WeekStatMessage{
-			Keys:            keys,
-			FormattedDay:    formattedDay,
-			Values:          values,
-			TotalWeekUptime: weekStat.WeekTotal.Active,
-			AllCategory:     allCategory,
-			Month:           month,
-			Year:            fmt.Sprint(year),
-			AppDetail:       appCard,
-		},
-		nil
+	res.AppDetail = appCard
+	return res, nil
 }
 
 func (s *Service) getAppStat(msg utils.AppStatRequest) (utils.AppStatMessage, error) {
@@ -128,7 +127,7 @@ func (s *Service) getDayStat(msg utils.Date) (utils.DayStatMessage, error) {
 	if err != nil {
 		return utils.NoMessage.DayStatResponse, err
 	}
-	d, _ := utils.ParseKey(msg)
+	d := utils.ToTimeType(msg)
 	date := fmt.Sprintf("%s. %s %s, %d", strings.TrimSuffix(d.Weekday().String(), "day"), utils.AddOrdinalSuffix(d.Day()), d.Month().String(), d.Year())
 
 	return utils.DayStatMessage{EachApp: dayStat.EachApp, DayTotal: dayStat.DayTotal, Date: date}, nil
@@ -141,20 +140,20 @@ func (s *Service) setAppCategory(msg utils.SetCategoryRequest) (utils.SetCategor
 	return utils.SetCategoryResponse{IsCategorySet: true}, nil
 }
 
-func (s *Service) tasks() (utils.ReminderMessage, error) {
+func (s *Service) tasks() (utils.TaskMessage, error) {
 
 	allApps, err := s.db.GetAllApp()
 	if err != nil {
-		return utils.NoMessage.ReminderAndLimitResponse, err
+		return utils.NoMessage.TaskResponse, err
 	}
-	return utils.ReminderMessage{AllApps: allApps}, nil
+	return utils.TaskMessage{AllApps: allApps}, nil
 }
 
-func (s *Service) allReminderTask() (utils.ReminderMessage, error) {
+func (s *Service) allReminderTask() (utils.TaskMessage, error) {
 
 	tasks, err := s.db.GetAllTask()
 	if err != nil {
-		return utils.NoMessage.ReminderAndLimitResponse, err
+		return utils.NoMessage.TaskResponse, err
 	}
 
 	validTask := make([]utils.Task, 0, len(tasks))
@@ -168,7 +167,7 @@ func (s *Service) allReminderTask() (utils.ReminderMessage, error) {
 
 		if taskStartTime.Before(now) {
 			if err := s.db.RemoveTask(task.UUID); err != nil {
-				return utils.NoMessage.ReminderAndLimitResponse, err
+				return utils.NoMessage.TaskResponse, err
 			}
 		}
 		validTask = append(validTask, task)
@@ -178,19 +177,26 @@ func (s *Service) allReminderTask() (utils.ReminderMessage, error) {
 		return a.Reminder.StartTime.Compare(b.Reminder.StartTime)
 	})
 
-	return utils.ReminderMessage{AllTask: slices.Clip(validTask)}, nil
+	return utils.TaskMessage{AllTask: slices.Clip(validTask)}, nil
 }
 
-func (s *Service) allDailyAppLimitTask() (utils.ReminderMessage, error) {
+func (s *Service) allDailyAppLimitTask() (utils.TaskMessage, error) {
 	tasks, err := s.db.GetAllTask()
 	if err != nil {
-		return utils.NoMessage.ReminderAndLimitResponse, err
+		return utils.NoMessage.TaskResponse, err
 	}
 
 	limitTask := make([]utils.Task, 0, len(tasks))
 
 	for _, task := range tasks {
 		if task.Job == utils.DailyAppLimit {
+
+			if timesofar, err := s.db.GetAppTodayActiveStatSoFar(task.AppName); err == nil {
+				if timesofar > task.AppLimit.Limit {
+					task.AppLimit.IsLimitReached = true
+				}
+			}
+
 			limitTask = append(limitTask, task)
 		}
 	}
@@ -199,44 +205,54 @@ func (s *Service) allDailyAppLimitTask() (utils.ReminderMessage, error) {
 		return cmp.Compare(a.AppLimit.Limit, b.AppLimit.Limit)
 	})
 
-	return utils.ReminderMessage{AllTask: slices.Clip(limitTask)}, nil
+	return utils.TaskMessage{AllTask: slices.Clip(limitTask)}, nil
 }
 
-func (s *Service) addNewReminder(task utils.Task) (utils.ReminderMessage, error) {
+func (s *Service) addNewReminder(task utils.Task) (utils.TaskMessage, error) {
 
 	if task.Job == utils.ReminderWithAppLaunch {
 		appInfo, err := s.db.GetAppIconCategoryAndCmdLine([]string{task.AppName})
 		if err != nil {
-			return utils.NoMessage.ReminderAndLimitResponse, err
+			return utils.NoMessage.TaskResponse, err
 		}
 		task.AppIconCategoryAndCmdLine = appInfo[0]
 	}
 
 	err := s.taskManager.SendTaskToTaskManager(task)
 	if err != nil {
-		return utils.NoMessage.ReminderAndLimitResponse, err
+		return utils.NoMessage.TaskResponse, err
 	}
 
-	return utils.ReminderMessage{TaskOptSuccessful: true}, nil
-}
-
-func (s *Service) addNewLimitApp(msg utils.Task) (utils.ReminderMessage, error) {
-
-	err := s.taskManager.SendTaskToTaskManager(msg)
+	t, err := s.allReminderTask()
 	if err != nil {
-		return utils.NoMessage.ReminderAndLimitResponse, err
-	}
-
-	t, err := s.allDailyAppLimitTask()
-	if err != nil {
-		return utils.ReminderMessage{TaskOptSuccessful: true}, err
+		return utils.TaskMessage{TaskOptSuccessful: true}, err
 	}
 
 	t.TaskOptSuccessful = true
 	return t, nil
 }
 
-func (s *Service) removeTask(msg utils.Task) (utils.ReminderMessage, error) {
+func (s *Service) addNewLimitApp(msg utils.Task) (utils.TaskMessage, error) {
+
+	err := s.taskManager.SendTaskToTaskManager(msg)
+	if err != nil {
+		return utils.NoMessage.TaskResponse, err
+	}
+
+	fmt.Println("task sent")
+
+	t, err := s.allDailyAppLimitTask()
+	if err != nil {
+		return utils.TaskMessage{TaskOptSuccessful: true}, err
+	}
+
+	fmt.Println("task added")
+
+	t.TaskOptSuccessful = true
+	return t, nil
+}
+
+func (s *Service) removeTask(msg utils.Task) (utils.TaskMessage, error) {
 
 	if t, err := s.db.GetTaskByUUID(msg.UUID); err == nil {
 
@@ -247,10 +263,13 @@ func (s *Service) removeTask(msg utils.Task) (utils.ReminderMessage, error) {
 		s.taskManager.RemoveTask(msg.UUID)
 	}
 
-	err := s.db.RemoveTask(msg.UUID)
-	if err != nil {
-		return utils.NoMessage.ReminderAndLimitResponse, err
+	if err := s.db.RemoveTask(msg.UUID); err != nil {
+		return utils.NoMessage.TaskResponse, err
 	}
 
-	return utils.ReminderMessage{TaskOptSuccessful: true}, nil
+	return utils.TaskMessage{TaskOptSuccessful: true}, nil
+}
+
+func (s *Service) getCategory() ([]utils.Category, error) {
+	return s.db.GetAllACategories()
 }

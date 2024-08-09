@@ -41,6 +41,7 @@ func (a *App) DayStatHandler(w http.ResponseWriter, r *http.Request) {
 
 	if msg, err = a.commWithDaemonService(msg); err != nil {
 		a.serverError(w, fmt.Errorf("error occurred in commWithDaemonService:%w", err))
+		return
 	}
 
 	if err = dayStatResponse(msg.DayStatResponse).Render(context.TODO(), w); err != nil {

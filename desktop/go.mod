@@ -1,4 +1,4 @@
-module desktop
+module smDesktop
 
 go 1.22.1
 
@@ -15,6 +15,7 @@ require (
 
 require (
 	github.com/BurntSushi/xgb v0.0.0-20210121224620-deaf085860bc // indirect
+	github.com/BurntSushi/xgbutil v0.0.0-20190907113008-ad855c713046 // indirect
 	github.com/a-h/templ v0.2.747 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/gen2brain/beeep v0.0.0-20240516210008-9c006672e7f4 // indirect
